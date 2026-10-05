@@ -96,4 +96,29 @@ import XCTest
         for row in value.records { try row.value?.validate() }
         let store = try LocalStore(path:location()); try store.apply(value); XCTAssertEqual(store.records.count,4)
     }
+    func testNativeGraphRoundTripKeepsOwnershipAndExceptions() throws {
+        let url = try XCTUnwrap(Bundle(for:Self.self).url(forResource:"snapshot-v2",withExtension:"json"))
+        let fixture = try JSONDecoder().decode(Snapshot.self,from:Data(contentsOf:url))
+        for version in fixture.records {
+            let graph = try XCTUnwrap(version.value)
+            let encoded = try JSONEncoder().encode(graph)
+            let wire = try XCTUnwrap(JSONSerialization.jsonObject(with:encoded) as? [String:Any])
+            let record = try XCTUnwrap(wire["record"] as? [String:Any])
+            XCTAssertEqual(record["id"] as? String,version.id)
+            if version.kind == "note" {
+                let linked = try XCTUnwrap(wire["linked_task"] as? [String:Any])
+                XCTAssertEqual(linked["note_id"] as? String,version.id)
+                XCTAssertEqual((wire["activity"] as? [[String:Any]])?.count,1)
+            }
+            if version.kind == "event" {
+                XCTAssertNil(record["start_at"])
+                XCTAssertEqual(record["recurrence_frequency"] as? String,"DAILY")
+                let exceptions = try XCTUnwrap(wire["exceptions"] as? [[String:Any]])
+                XCTAssertEqual(exceptions.first?["kind"] as? String,"cancelled")
+                XCTAssertEqual(exceptions.first?["event_id"] as? String,version.id)
+                let alarms = try XCTUnwrap(wire["reminders"] as? [[String:Any]])
+                XCTAssertEqual(alarms.first?["event_id"] as? String,version.id)
+            }
+        }
+    }
 }
