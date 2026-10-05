@@ -1,4 +1,4 @@
-# Tinker companion sync v1
+# Tinker companion sync v1 (historical draft; replaced by [v2](SYNC-v2.md))
 
 The desktop owns the ordered journal. The phone owns an independent SQLite store
 and durable outbox. Only `note`, `task`, and `event` aggregates cross this service.

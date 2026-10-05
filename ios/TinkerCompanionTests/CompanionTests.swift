@@ -6,7 +6,7 @@ import XCTest
 @MainActor final class CompanionTests: XCTestCase {
     private func location() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("test.sqlite3") }
     private func snapshot(_ records: [RecordVersion] = [], cursor: Int = 0) -> Snapshot {
-        Snapshot(version:1,server_id:"desktop_fixture",cursor:cursor,records:records,conflicts:[])
+        Snapshot(version:2,server_id:"desktop_fixture",cursor:cursor,records:records,conflicts:[])
     }
     func testOfflineEditsAndStableIDsSurviveReopen() throws {
         let path = location(); let graph = Graph.new("note")
@@ -29,7 +29,7 @@ import XCTest
         var graph = Graph.new("task"); graph.set("title","First")
         try store.edit(graph,kind:"task",id:graph.id); let sent = try store.uploads()
         graph.set("title","Newer"); try store.edit(graph,kind:"task",id:graph.id)
-        try store.acknowledge(UploadResponse(version:1,server_id:"desktop_fixture",results:[UploadResult(op_id:sent[0].op_id,status:"applied",revision:1,conflict:nil)]),sent:sent)
+        try store.acknowledge(UploadResponse(version:2,server_id:"desktop_fixture",results:[UploadResult(op_id:sent[0].op_id,status:"applied",revision:1,conflict:nil)]),sent:sent)
         XCTAssertEqual(store.pendingCount,1); XCTAssertEqual(store.records.first?.value?.title,"Newer")
         XCTAssertEqual(try store.uploads().first?.base_revision,1)
     }
@@ -44,16 +44,18 @@ import XCTest
         let store = try LocalStore(path:location()); var current = Graph.new("note"); current.set("title","Current")
         var incoming = current; incoming.set("title","Offline")
         let conflict = Conflict(id:"conflict_fixture",kind:"note",record_id:current.id,current:current,incoming:incoming,current_revision:2,resolved:false)
-        try store.apply(Snapshot(version:1,server_id:"desktop_fixture",cursor:4,records:[RecordVersion(kind:"note",id:current.id,revision:4,value:current)],conflicts:[conflict]))
+        try store.apply(Snapshot(version:2,server_id:"desktop_fixture",cursor:4,records:[RecordVersion(kind:"note",id:current.id,revision:4,value:current)],conflicts:[conflict]))
         try store.resolve(conflict,useIncoming:true)
         XCTAssertEqual(try store.uploads().first?.base_revision,2)
         XCTAssertEqual(store.conflicts.count,1)
         XCTAssertEqual(store.conflicts[0].current?.title,"Current"); XCTAssertEqual(store.conflicts[0].incoming?.title,"Offline")
     }
     func testInvalidImportIsAtomic() throws {
-        let store = try LocalStore(path:location()); let good = Graph.new("event")
-        var bad = Graph.new("event"); bad.set("end_at",bad.text("start_at"))
-        XCTAssertThrowsError(try store.importEvents([good,bad])); XCTAssertTrue(store.records.isEmpty); XCTAssertEqual(store.pendingCount,0)
+        let store = try LocalStore(path:location()); let calendar = Graph.new("calendar")
+        try store.apply(snapshot([RecordVersion(kind:"calendar",id:calendar.id,revision:1,value:calendar)],cursor:1))
+        var good = Graph.new("event"); good.set("calendar_id",calendar.id)
+        var bad = Graph.new("event"); bad.set("calendar_id",calendar.id); bad.set("end_at",bad.text("start_at"))
+        XCTAssertThrowsError(try store.importEvents([good,bad])); XCTAssertEqual(store.records.count,1); XCTAssertEqual(store.pendingCount,0)
     }
     func testStrictSharedFieldsAndCredentialMetadata() throws {
         var graph = Graph.new("note"); graph.set("metadata_json","{\"access_token\":\"secret\"}")
@@ -70,7 +72,7 @@ import XCTest
         XCTAssertThrowsError(try Recurrence("FREQ=HOURLY"))
     }
     func testICSUnicodeRecurrenceAndExceptionsRoundtrip() throws {
-        var graph = Graph.new("event"); graph.set("title",String(repeating:"🎉 café ",count:30)); graph.set("description","lines\ncomma, semicolon; slash\\")
+        var graph = Graph.new("event"); graph.set("calendar_id","calendar_fixture"); graph.set("title",String(repeating:"🎉 café ",count:30)); graph.set("description","lines\ncomma, semicolon; slash\\")
         graph.set("start_at","2026-10-01T09:00:00Z"); graph.set("end_at","2026-10-01T10:00:00Z"); graph.set("timezone","Pacific/Auckland"); graph.set("recurrence","FREQ=DAILY;COUNT=5")
         graph.reminders = [Reminder(id:"reminder_fixture",owner_kind:"event",owner_id:graph.id,fire_at:"2026-10-01T08:45:00Z",message:"Remember")]
         graph.exceptions = [EventException(id:"exception_fixture",event_id:graph.id,occurrence_at:"2026-10-02T09:00:00Z",cancelled:true,start_at:nil,end_at:nil,title:nil)]
@@ -84,14 +86,14 @@ import XCTest
         XCTAssertThrowsError(try LocalEndpoint.validate("https://100.66.93.44:443"))
         XCTAssertThrowsError(try LocalEndpoint.validate("https://user:pass@192.168.1.2:443"))
         XCTAssertNoThrow(try LocalEndpoint.validate("https://192.168.1.2:1234"))
-        let invitation = Invitation(version:1,server_id:"desktop_fixture",endpoint:"https://192.168.1.2:1234",certificate_sha256:String(repeating:"a",count:64),code:String(repeating:"x",count:43),expires_at:0)
+        let invitation = Invitation(version:2,server_id:"desktop_fixture",endpoint:"https://192.168.1.2:1234",certificate_sha256:String(repeating:"a",count:64),code:String(repeating:"x",count:43),expires_at:0)
         XCTAssertThrowsError(try invitation.validate())
     }
     func testSharedDesktopSnapshotFixture() throws {
-        let url = try XCTUnwrap(Bundle(for:Self.self).url(forResource:"snapshot-v1",withExtension:"json"))
+        let url = try XCTUnwrap(Bundle(for:Self.self).url(forResource:"snapshot-v2",withExtension:"json"))
         let value = try JSONDecoder().decode(Snapshot.self,from:Data(contentsOf:url))
-        XCTAssertEqual(value.version,1); XCTAssertEqual(value.records.count,3)
+        XCTAssertEqual(value.version,2); XCTAssertEqual(value.records.count,4)
         for row in value.records { try row.value?.validate() }
-        let store = try LocalStore(path:location()); try store.apply(value); XCTAssertEqual(store.records.count,3)
+        let store = try LocalStore(path:location()); try store.apply(value); XCTAssertEqual(store.records.count,4)
     }
 }

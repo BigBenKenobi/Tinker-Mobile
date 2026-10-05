@@ -1,3 +1,7 @@
+# Protocol-two integration status — 6 October 2026
+
+The existing evidence below applies to the **protocol-one draft commit only**. Protocol two now targets desktop schema five with the existing Notes, Tasks, and native Calendar panels. Desktop isolated tests: **133 passed, 1 optional-dependency UI smoke skipped** on Fedora; see matching desktop workspace. The new iPhone Swift sources, Simulator tests, unsigned IPA workflow, Fedora LAN UI, and physical iPhone/SideStore cycle have **not yet been run** against this integration. The workflow is present and ready to validate after the matching branch is pushed. Do not treat the older 11-test Simulator run as validation of this source.
+
 # First companion milestone acceptance
 
 Status: **IMPLEMENTATION PRESENT — ACCEPTANCE PENDING** (6 October 2026).

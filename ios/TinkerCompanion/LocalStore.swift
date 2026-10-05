@@ -24,14 +24,15 @@ import Combine
         do {
             _ = try rows("PRAGMA journal_mode=WAL"); try execute("PRAGMA synchronous=FULL"); _ = try rows("PRAGMA busy_timeout=5000")
             let schema = Int(try rows("PRAGMA user_version").first?[0] ?? "0") ?? 0
-            guard schema <= 1 else { throw CompanionError("This database needs a newer Tinker build") }
+            guard schema <= 2 else { throw CompanionError("This database needs a newer Tinker build") }
+            if schema == 1 { throw CompanionError("Draft protocol-one local data needs a separate export before this update") }
             if schema == 0 {
                 try transaction {
                     try execute("CREATE TABLE records(kind TEXT NOT NULL,id TEXT NOT NULL,revision INTEGER NOT NULL,value TEXT,PRIMARY KEY(kind,id))")
                     try execute("CREATE TABLE outbox(kind TEXT NOT NULL,id TEXT NOT NULL,op_id TEXT NOT NULL,mutation TEXT NOT NULL,PRIMARY KEY(kind,id))")
                     try execute("CREATE TABLE conflicts(id TEXT PRIMARY KEY,value TEXT NOT NULL)")
                     try execute("CREATE TABLE state(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
-                    try execute("PRAGMA user_version=1")
+                    try execute("PRAGMA user_version=2")
                 }
             }
             let integrity = try rows("PRAGMA quick_check").first?[0] ?? ""
@@ -97,7 +98,7 @@ import Combine
         // A dialog supplies its observed revision. A newer local draft for the same
         // root is preserved as a conflict instead of overwritten by an older dialog.
         try Graph.identifier(id); try value?.validate()
-        guard ["note", "task", "event"].contains(kind), value == nil || (value?.id == id && value?.kind == kind) else { throw CompanionError("Item ownership mismatch") }
+        guard ["note", "task", "calendar", "event"].contains(kind), value == nil || (value?.id == id && value?.kind == kind) else { throw CompanionError("Item ownership mismatch") }
         try transaction {
             let old = try rows("SELECT revision FROM records WHERE kind=? AND id=?", [kind,id]).first
             let revision = Int(old?[0] ?? "0") ?? 0
@@ -112,9 +113,22 @@ import Combine
     }
     func importEvents(_ graphs: [Graph]) throws {
         guard graphs.count <= 100 else { throw CompanionError("Import at most 100 events per file") }
-        for graph in graphs { try graph.validate() }
+        guard let calendar = records.first(where:{ $0.kind == "calendar" && $0.value != nil }) else {
+            throw CompanionError("Create or sync a calendar before importing events")
+        }
+        let prepared = try graphs.map { source -> Graph in
+            var graph = source
+            graph.set("calendar_id", calendar.id)
+            if let existing = records.first(where:{ $0.kind == "event" && $0.value?.text("ics_uid") == graph.text("ics_uid") }) {
+                graph.set("id", existing.id)
+                graph.reminders = graph.reminders.map { var alarm = $0; alarm.owner_id = existing.id; return alarm }
+                graph.exceptions = graph.exceptions.map { var exception = $0; exception.event_id = existing.id; return exception }
+            }
+            try graph.validate()
+            return graph
+        }
         try transaction {
-            for g in graphs {
+            for g in prepared {
                 let old = try rows("SELECT revision FROM records WHERE kind='event' AND id=?", [g.id]).first
                 let pendingRow = try rows("SELECT mutation FROM outbox WHERE kind='event' AND id=?", [g.id]).first
                 let pending = try pendingRow.map { try decode($0[0]!, as: Mutation.self) }
@@ -127,7 +141,7 @@ import Combine
         try refresh()
     }
     private func apply(_ row: RecordVersion) throws {
-        guard ["note","task","event"].contains(row.kind), row.revision >= 0 else { throw CompanionError("Unsupported record domain/revision") }
+        guard ["note","task","calendar","event"].contains(row.kind), row.revision >= 0 else { throw CompanionError("Unsupported record domain/revision") }
         try row.value?.validate()
         guard row.value == nil || (row.value?.id == row.id && row.value?.kind == row.kind) else { throw CompanionError("Invalid sync ownership") }
         let pending = try rows("SELECT op_id FROM outbox WHERE kind=? AND id=?", [row.kind,row.id])
@@ -140,7 +154,7 @@ import Combine
         try execute("INSERT INTO conflicts VALUES(?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",[conflict.id,try json(conflict)])
     }
     func apply(_ snapshot: Snapshot) throws {
-        guard snapshot.version == 1, snapshot.cursor >= 0 else { throw CompanionError("Unsupported sync version") }
+        guard snapshot.version == 2, snapshot.cursor >= 0 else { throw CompanionError("Unsupported sync version") }
         try transaction {
             if let previous = try state("server_id"), previous != snapshot.server_id { throw CompanionError("Pairing belongs to a different desktop. Keep local data and reconnect explicitly.") }
             // A full snapshot replaces only clean records. This also removes ghosts
@@ -154,7 +168,7 @@ import Combine
         try refresh()
     }
     func apply(_ page: Changes) throws {
-        guard page.version == 1, try state("server_id") == page.server_id else { throw CompanionError("Sync identity/version mismatch") }
+        guard page.version == 2, try state("server_id") == page.server_id else { throw CompanionError("Sync identity/version mismatch") }
         try transaction {
             var previous = try cursor ?? 0
             for change in page.changes {
@@ -169,7 +183,7 @@ import Combine
         try refresh()
     }
     func acknowledge(_ response: UploadResponse, sent: [Mutation]) throws {
-        guard response.version == 1, try state("server_id") == response.server_id, response.results.count == sent.count else { throw CompanionError("Invalid upload acknowledgement") }
+        guard response.version == 2, try state("server_id") == response.server_id, response.results.count == sent.count else { throw CompanionError("Invalid upload acknowledgement") }
         try transaction {
             for (request,result) in zip(sent,response.results) {
                 guard result.op_id == request.op_id, ["applied","conflict"].contains(result.status), result.revision >= 0 else { throw CompanionError("Mismatched upload operation") }

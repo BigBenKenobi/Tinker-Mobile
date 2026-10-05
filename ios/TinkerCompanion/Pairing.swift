@@ -15,7 +15,7 @@ struct Invitation: Codable {
     let code: String
     let expires_at: Int
     func validate() throws {
-        guard version == 1, expires_at > Int(Date().timeIntervalSince1970), expires_at <= Int(Date().timeIntervalSince1970) + 180,
+        guard version == 2, expires_at > Int(Date().timeIntervalSince1970), expires_at <= Int(Date().timeIntervalSince1970) + 180,
               certificate_sha256.range(of:"^[a-f0-9]{64}$",options:.regularExpression) != nil,
               (20...200).contains(code.count) else { throw CompanionError("Pairing QR is invalid or expired") }
         try Graph.identifier(server_id); _ = try LocalEndpoint.validate(endpoint)

@@ -28,6 +28,7 @@ indirect enum JSONValue: Codable, Equatable {
     }
     var text: String { if case .string(let v) = self { return v }; return "" }
     var flag: Bool { if case .bool(let v) = self { return v }; return false }
+    var integer: Int? { if case .number(let v) = self { return v }; return nil }
 }
 
 struct CompanionError: LocalizedError {
@@ -53,7 +54,7 @@ enum Dates {
     }
 }
 
-/// Owned reminder; only its explicit notification owner may schedule the occurrence.
+/// Device-owned event alarm. Task alarms live in the task record itself.
 struct Reminder: Codable, Equatable, Identifiable {
     var id: String
     var owner_kind: String
@@ -64,7 +65,7 @@ struct Reminder: Codable, Equatable, Identifiable {
     var completed: Bool = false
 }
 
-/// A recurrence override keeps the original occurrence identity even if its time moves.
+/// UI projection of a native calendar exception; original_start is its stable key.
 struct EventException: Codable, Equatable, Identifiable {
     var id: String
     var event_id: String
@@ -73,92 +74,221 @@ struct EventException: Codable, Equatable, Identifiable {
     var start_at: String?
     var end_at: String?
     var title: String?
-    // Python requires explicit nulls in complete child graphs.
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id); try c.encode(event_id, forKey: .event_id)
-        try c.encode(occurrence_at, forKey: .occurrence_at); try c.encode(cancelled, forKey: .cancelled)
-        try c.encode(start_at, forKey: .start_at); try c.encode(end_at, forKey: .end_at); try c.encode(title, forKey: .title)
-    }
+    var originalValue: [String: JSONValue]? = nil
 }
 
-/// Atomic parent and children. Editors mutate a copy; validation runs before persistence/upload.
+/// UI drafts use familiar fields, while Codable speaks exact desktop protocol two.
 struct Graph: Codable, Equatable, Identifiable {
     var kind: String
     var record: [String: JSONValue]
     var reminders: [Reminder]
     var exceptions: [EventException]
+    var linked_task: [String: JSONValue]? = nil
+    var activity: [[String: JSONValue]] = []
+    private var native: [String: JSONValue] = [:]
     var id: String { record["id"]?.text ?? "" }
-    var title: String { record["title"]?.text ?? "" }
+    var title: String { text(kind == "calendar" ? "name" : "title") }
     func text(_ key: String) -> String { record[key]?.text ?? "" }
     func flag(_ key: String) -> Bool { record[key]?.flag ?? false }
     mutating func set(_ key: String, _ value: String) { record[key] = .string(value) }
     mutating func optional(_ key: String, _ value: String) { record[key] = value.isEmpty ? .null : .string(value) }
+
     static func new(_ kind: String, now: Date = Date()) -> Graph {
         let id = Dates.id(kind), stamp = Dates.stamp(now)
-        var r: [String: JSONValue] = ["id": .string(id), "title": .string(""), "created_at": .string(stamp), "updated_at": .string(stamp), "metadata_json": .string("{}")]
-        if kind == "note" { r["body"] = .string(""); r["archived"] = .bool(false); r["pinned"] = .bool(false) }
-        else if kind == "task" { r["description"] = .string(""); r["status"] = .string("pending"); r["due_at"] = .null }
-        else {
-            r["description"] = .string(""); r["location"] = .string("")
-            r["start_at"] = .string(stamp); r["end_at"] = .string(Dates.stamp(now.addingTimeInterval(3600)))
-            r["timezone"] = .string(TimeZone.current.identifier); r["all_day"] = .bool(false); r["recurrence"] = .null
+        var r: [String: JSONValue] = ["id": .string(id)]
+        switch kind {
+        case "note":
+            r.merge(["title": .string(""), "body": .string(""), "archived": .bool(false), "pinned": .bool(false),
+                     "created_at": .string(stamp), "updated_at": .string(stamp), "metadata_json": .string("{}")]) { _, new in new }
+        case "task":
+            r.merge(["title": .string(""), "description": .string(""), "status": .string("pending"), "due_at": .null,
+                     "created_at": .string(stamp), "updated_at": .string(stamp), "metadata_json": .string("{}"),
+                     "kind": .string("todo"), "timezone_name": .string(TimeZone.current.identifier), "recurrence": .string("none"),
+                     "recurrence_anchor": .null, "paused": .bool(false), "last_fired_at": .null,
+                     "note_id": .null, "notification_owner": .string("phone")]) { _, new in new }
+        case "calendar":
+            r.merge(["name": .string("New calendar"), "color": .string("#729240"), "visible": .bool(true), "sort_order": .number(0)]) { _, new in new }
+        default:
+            r.merge(["title": .string(""), "description": .string(""), "location": .string(""),
+                     "start_at": .string(stamp), "end_at": .string(Dates.stamp(now.addingTimeInterval(3600))),
+                     "timezone": .string(TimeZone.current.identifier), "all_day": .bool(false), "recurrence": .null,
+                     "created_at": .string(stamp), "updated_at": .string(stamp), "calendar_id": .string(""),
+                     "ics_uid": .string(id + "@tinker")]) { _, new in new }
         }
         return Graph(kind: kind, record: r, reminders: [], exceptions: [])
     }
-    func validate() throws {
-        let common: Set<String> = ["id", "title", "created_at", "updated_at", "metadata_json"]
-        let fields: [String: Set<String>] = ["note": ["body", "archived", "pinned"], "task": ["description", "status", "due_at"], "event": ["description", "location", "start_at", "end_at", "all_day", "timezone", "recurrence"]]
-        guard let extra = fields[kind], Set(record.keys) == common.union(extra) else { throw CompanionError("Unsupported record fields") }
-        try Self.identifier(id)
-        for (key, value) in record {
-            if ["archived", "pinned", "all_day"].contains(key) {
-                guard case .bool = value else { throw CompanionError("Invalid flag") }
-            } else if ["due_at", "recurrence"].contains(key) && value == .null { continue }
-            else {
-                guard case .string(let text) = value, !text.contains("\0"), text.utf8.count <= 262144 else { throw CompanionError("Invalid or oversized text") }
-            }
-        }
-        for key in ["created_at", "updated_at", "due_at", "start_at", "end_at"] where record[key] != nil && record[key] != .null { _ = try Dates.parse(text(key)) }
-        let data = Data(text("metadata_json").utf8)
-        guard let metadata = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw CompanionError("Metadata must be an object") }
-        try Self.checkMetadata(metadata)
-        if kind == "task", !["pending", "in_progress", "completed", "cancelled"].contains(text("status")) { throw CompanionError("Invalid task status") }
+
+    enum CodingKeys: String, CodingKey { case kind, record, linked_task, activity, exceptions, reminders }
+    init(kind: String, record: [String: JSONValue], reminders: [Reminder], exceptions: [EventException]) {
+        self.kind = kind; self.record = record; self.reminders = reminders; self.exceptions = exceptions
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try c.decode(String.self, forKey: .kind)
+        native = try c.decode([String: JSONValue].self, forKey: .record)
+        linked_task = try c.decodeIfPresent([String: JSONValue].self, forKey: .linked_task)
+        activity = try c.decode([[String: JSONValue]].self, forKey: .activity)
+        record = native
         if kind == "event" {
-            guard TimeZone(identifier: text("timezone")) != nil else { throw CompanionError("Unknown timezone") }
+            record["description"] = native["notes"] ?? .string("")
+            record["timezone"] = native["timezone_name"] ?? .string("UTC")
+            record["start_at"] = .string(Self.instant(native["start_value"]?.text ?? ""))
+            let end = Self.instant(native["end_value"]?.text ?? "")
+            record["end_at"] = .string(native["all_day"]?.flag == true ? Self.dayAfter(end) : end)
+            record["recurrence"] = .string(Self.rule(native))
+        }
+        reminders = try c.decode([[String: JSONValue]].self, forKey: .reminders).map { row in
+            Reminder(id:row["id"]?.text ?? "", owner_kind:"event", owner_id:row["event_id"]?.text ?? "",
+                     fire_at:row["fire_at"]?.text ?? "", message:row["message"]?.text ?? "",
+                     notification_owner:row["notification_owner"]?.text ?? "phone", completed:row["completed"]?.flag ?? false)
+        }
+        exceptions = try c.decode([[String: JSONValue]].self, forKey: .exceptions).map { row in
+            let original = row["original_start"]?.text ?? ""
+            let replacement = row["replacement_json"]?.text ?? ""
+            let object = (try? JSONDecoder().decode([String: JSONValue].self, from:Data(replacement.utf8))) ?? [:]
+            return EventException(id:original, event_id:row["event_id"]?.text ?? "", occurrence_at:Self.instant(original),
+                                  cancelled:row["kind"]?.text == "cancelled", start_at:object["start"]?.text.map(Self.instant),
+                                  end_at:object["end"]?.text.map(Self.instant), title:object["title"]?.text, originalValue:object)
+        }
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(kind, forKey:.kind)
+        var r = native.isEmpty ? record : native
+        switch kind {
+        case "note":
+            for key in ["id","title","body","archived","pinned","created_at","updated_at","metadata_json"] { r[key] = record[key] }
+        case "task":
+            for key in ["id","title","description","status","due_at","created_at","updated_at","metadata_json"] { r[key] = record[key] }
+            for key in ["recurrence","paused","notification_owner"] { if let value = record[key] { r[key] = value } }
+            if native.isEmpty {
+                r.merge(["kind": .string(record["due_at"] == .null ? "todo" : "reminder"), "timezone_name": .string(TimeZone.current.identifier),
+                         "recurrence": .string("none"), "recurrence_anchor": .null, "paused": .bool(false),
+                         "last_fired_at": .null, "note_id": .null, "notification_owner": .string("phone")]) { _, new in new }
+            }
+            if record["due_at"] != .null { r["kind"] = .string("reminder") }
+            else { r["kind"] = .string("todo"); r["recurrence"] = .string("none") }
+        case "event":
+            if native.isEmpty {
+                for key in ["description","start_at","end_at","timezone","recurrence"] { r.removeValue(forKey:key) }
+            }
+            for key in ["id","title","location","all_day","created_at","updated_at","calendar_id","ics_uid"] { r[key] = record[key] }
+            r["notes"] = record["description"] ?? .string("")
+            r["timezone_name"] = record["timezone"] ?? .string("UTC")
+            r["start_value"] = .string(Self.dateValue(text("start_at"), allDay:flag("all_day")))
+            r["end_value"] = .string(Self.dateValue(flag("all_day") ? Self.dayBefore(text("end_at")) : text("end_at"), allDay:flag("all_day")))
+            let repeatRule = try Recurrence(text("recurrence"))
+            if let frequency = repeatRule.frequency {
+                r["recurrence_frequency"] = .string(frequency)
+                r["recurrence_interval"] = .number(repeatRule.interval)
+                let weekdays = repeatRule.weekdays?.compactMap { Recurrence.days.firstIndex(of:$0) } ?? []
+                r["recurrence_weekdays"] = .string(String(data:try JSONEncoder().encode(weekdays.sorted()),encoding:.utf8)!)
+                r["recurrence_count"] = repeatRule.count == 10000 ? .null : .number(repeatRule.count)
+                r["recurrence_until"] = repeatRule.until.map { .string(String(Dates.stamp($0).prefix(10))) } ?? .null
+            } else {
+                for key in ["recurrence_frequency","recurrence_interval","recurrence_weekdays","recurrence_count","recurrence_until"] { r[key] = .null }
+            }
+        default: break
+        }
+        try c.encode(r, forKey:.record)
+        try c.encode(linked_task, forKey:.linked_task)
+        try c.encode(activity, forKey:.activity)
+        try c.encode(reminders.map { reminder in
+            ["id": .string(reminder.id), "event_id": .string(reminder.owner_id), "fire_at": .string(reminder.fire_at),
+             "message": .string(reminder.message), "notification_owner": .string(reminder.notification_owner),
+             "completed": .bool(reminder.completed)] as [String: JSONValue]
+        }, forKey:.reminders)
+        try c.encode(exceptions.map { item -> [String: JSONValue] in
+            if item.cancelled { return ["event_id": .string(item.event_id), "original_start": .string(Self.dateValue(item.occurrence_at,allDay:flag("all_day"))), "kind": .string("cancelled"), "replacement_json": .null] }
+            var value = item.originalValue ?? [:]
+            value["id"] = .string(item.event_id); value["title"] = .string(item.title ?? title)
+            value["start"] = .string(Self.dateValue(item.start_at ?? item.occurrence_at,allDay:flag("all_day")))
+            value["end"] = .string(Self.dateValue(flag("all_day") ? Self.dayBefore(item.end_at ?? text("end_at")) : item.end_at ?? text("end_at"),allDay:flag("all_day")))
+            value["calendar_id"] = record["calendar_id"] ?? .string("")
+            value["all_day"] = record["all_day"] ?? .bool(false)
+            value["timezone_name"] = record["timezone"] ?? .string("UTC")
+            value["location"] = record["location"] ?? .string("")
+            value["notes"] = record["description"] ?? .string("")
+            value["ics_uid"] = record["ics_uid"] ?? .string("")
+            value["created_at"] = record["created_at"] ?? .string("")
+            value["updated_at"] = record["updated_at"] ?? .string("")
+            let bytes = (try? JSONEncoder().encode(value)) ?? Data("{}".utf8)
+            return ["event_id": .string(item.event_id), "original_start": .string(Self.dateValue(item.occurrence_at,allDay:flag("all_day"))), "kind": .string("override"), "replacement_json": .string(String(decoding:bytes,as:UTF8.self))]
+        }, forKey:.exceptions)
+    }
+    private static func instant(_ value: String) -> String {
+        if value.hasPrefix("datetime:") { return String(value.dropFirst(9)) }
+        if value.hasPrefix("date:") { return String(value.dropFirst(5)) + "T00:00:00Z" }
+        return value
+    }
+    private static func dateValue(_ value: String, allDay: Bool) -> String {
+        (allDay ? "date:" + String(value.prefix(10)) : "datetime:" + value)
+    }
+    private static func dayAfter(_ value: String) -> String {
+        guard let date = try? Dates.parse(value) else { return value }
+        return Dates.stamp(date.addingTimeInterval(86400))
+    }
+    private static func dayBefore(_ value: String) -> String {
+        guard let date = try? Dates.parse(value) else { return value }
+        return Dates.stamp(date.addingTimeInterval(-86400))
+    }
+    private static func rule(_ row: [String: JSONValue]) -> String {
+        guard let frequency = row["recurrence_frequency"]?.text, !frequency.isEmpty else { return "" }
+        var parts = ["FREQ=" + frequency, "INTERVAL=" + String(row["recurrence_interval"]?.integer ?? 1)]
+        if let count = row["recurrence_count"]?.integer { parts.append("COUNT=" + String(count)) }
+        if let until = row["recurrence_until"]?.text, !until.isEmpty {
+            parts.append("UNTIL=" + until.replacingOccurrences(of:"-",with:"") + "T235959Z")
+        }
+        if let weekdays = row["recurrence_weekdays"]?.text,
+           let values = try? JSONDecoder().decode([Int].self,from:Data(weekdays.utf8)), !values.isEmpty {
+            parts.append("BYDAY=" + values.compactMap { Recurrence.days.indices.contains($0) ? Recurrence.days[$0] : nil }.joined(separator:","))
+        }
+        return parts.joined(separator:";")
+    }
+    func validate() throws {
+        try Self.identifier(id)
+        guard ["note","task","calendar","event"].contains(kind) else { throw CompanionError("Unsupported item kind") }
+        let legal: [String: Set<String>] = [
+            "note": ["id","title","body","archived","pinned","created_at","updated_at","metadata_json"],
+            "task": ["id","title","description","status","due_at","created_at","updated_at","metadata_json","kind","timezone_name","recurrence","recurrence_anchor","paused","last_fired_at","note_id","notification_owner"],
+            "calendar": ["id","name","color","visible","sort_order"],
+            "event": ["id","calendar_id","title","all_day","start_value","end_value","timezone_name","location","notes","recurrence_frequency","recurrence_interval","recurrence_weekdays","recurrence_count","recurrence_until","ics_uid","created_at","updated_at","description","start_at","end_at","timezone","recurrence"]
+        ]
+        guard Set(record.keys).isSubset(of:legal[kind] ?? []),
+              !record.values.contains(where:{ if case .string(let text) = $0 { return text.contains("\0") || text.utf8.count > 262144 }; return false }) else {
+            throw CompanionError("Invalid or oversized record field")
+        }
+        if kind == "event" {
+            guard !text("calendar_id").isEmpty else { throw CompanionError("Choose a calendar before saving") }
             guard try Dates.parse(text("end_at")) > Dates.parse(text("start_at")) else { throw CompanionError("End must follow start") }
             _ = try Recurrence(text("recurrence"))
         }
-        guard reminders.count <= 1000, exceptions.count <= 1000,
-              Set(reminders.map(\.id)).count == reminders.count,
-              Set(exceptions.map(\.id)).count == exceptions.count,
-              Set(exceptions.map(\.occurrence_at)).count == exceptions.count else { throw CompanionError("Invalid child collection") }
-        for r in reminders {
-            try Self.identifier(r.id)
-            guard r.owner_kind == kind, r.owner_id == id, ["phone", "desktop"].contains(r.notification_owner), r.message.utf8.count <= 262144 else { throw CompanionError("Invalid reminder ownership") }
-            _ = try Dates.parse(r.fire_at)
-        }
-        for e in exceptions {
-            try Self.identifier(e.id)
-            guard kind == "event", e.event_id == id, (e.start_at == nil) == (e.end_at == nil) else { throw CompanionError("Invalid exception ownership") }
-            let original = try Dates.parse(e.occurrence_at)
-            let starts = try Recurrence(text("recurrence")).occurrences(start:Dates.parse(text("start_at")),timezone:text("timezone"),lower:original,upper:original.addingTimeInterval(1))
-            guard starts.contains(original) else { throw CompanionError("Exception is not an occurrence of this event") }
-            if let start = e.start_at, let end = e.end_at {
-                guard try Dates.parse(end) > Dates.parse(start) else { throw CompanionError("Invalid exception duration") }
+        if kind == "calendar" {
+            guard !text("name").trimmingCharacters(in:.whitespaces).isEmpty,
+                  text("color").range(of:"^#[0-9A-Fa-f]{6}$",options:.regularExpression) != nil else {
+                throw CompanionError("Calendar needs a name and #RRGGBB colour")
             }
         }
+        if kind == "task", !["pending","completed","cancelled","running","failed"].contains(text("status")) { throw CompanionError("Invalid task status") }
+        if kind == "task", !text("due_at").isEmpty { _ = try Dates.parse(text("due_at")) }
+        if kind == "note" || kind == "task" {
+            let data = Data(text("metadata_json").utf8)
+            guard let metadata = try JSONSerialization.jsonObject(with:data) as? [String: Any] else { throw CompanionError("Metadata must be an object") }
+            try Self.checkMetadata(metadata)
+        }
+        guard reminders.count <= 1000, exceptions.count <= 1000, activity.count <= 1000 else { throw CompanionError("Too many linked records") }
+        guard reminders.allSatisfy({ kind == "event" && $0.owner_id == id && $0.notification_owner == "phone" || kind == "event" && $0.owner_id == id && $0.notification_owner == "desktop" }),
+              exceptions.allSatisfy({ kind == "event" && $0.event_id == id }) else { throw CompanionError("Invalid linked record ownership") }
     }
     static func identifier(_ value: String) throws {
-        guard value.range(of: "^[A-Za-z0-9_.@-]{1,200}$", options: .regularExpression) != nil else { throw CompanionError("Invalid stable ID") }
+        guard value.range(of:"^[A-Za-z0-9_.@-]{1,200}$",options:.regularExpression) != nil else { throw CompanionError("Invalid stable ID") }
     }
     private static func checkMetadata(_ value: Any) throws {
-        // Match the desktop's recursive structured-credential exclusion.
         if let object = value as? [String: Any] {
-            let markers = ["password", "passwd", "secret", "token", "api_key", "apikey", "private_key", "credential", "auth_key"]
+            let markers = ["password","passwd","secret","token","api_key","apikey","private_key","credential","auth_key"]
             for (key, child) in object {
-                let normalized = key.trimmingCharacters(in: .whitespaces).lowercased().replacingOccurrences(of: "-", with: "_").replacingOccurrences(of: " ", with: "_")
-                guard !markers.contains(where: normalized.contains) else { throw CompanionError("Credentials cannot be stored in record metadata") }
+                let normalized = key.trimmingCharacters(in:.whitespaces).lowercased().replacingOccurrences(of:"-",with:"_").replacingOccurrences(of:" ",with:"_")
+                guard !markers.contains(where:normalized.contains) else { throw CompanionError("Credentials cannot be stored in record metadata") }
                 try checkMetadata(child)
             }
         } else if let array = value as? [Any] { for child in array { try checkMetadata(child) } }

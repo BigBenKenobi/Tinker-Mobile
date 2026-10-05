@@ -53,8 +53,9 @@ import Combine
             let invitation = try JSONDecoder().decode(Invitation.self,from:Data(qr.utf8)); try invitation.validate()
             if let previous = try store.state("server_id"), previous != invitation.server_id { throw CompanionError("This local store belongs to another desktop. Keep it safe; use the same desktop for this milestone.") }
             let transport = try Transport(endpoint:invitation.endpoint,fingerprint:invitation.certificate_sha256,serverID:invitation.server_id)
-            let body = try JSONSerialization.data(withJSONObject:["version":1,"code":invitation.code])
-            let result = try await transport.request("/v1/pair",method:"POST",body:body,as:PairResponse.self)
+            let body = try JSONSerialization.data(withJSONObject:["version":2,"code":invitation.code])
+            let result = try await transport.request("/v2/pair",method:"POST",body:body,as:PairResponse.self)
+            guard result.version == 2 else { throw CompanionError("Desktop protocol changed") }
             let paired = Pairing(server_id:result.server_id,endpoint:invitation.endpoint,certificate_sha256:invitation.certificate_sha256,peer_id:result.peer_id,credential:result.credential)
             try PairingKeychain.save(paired); pairing = paired; connection = "Paired — ready to sync"; error = nil
         } catch { self.error = error.localizedDescription }
@@ -95,15 +96,15 @@ import Combine
             }
             let transport = try Transport(endpoint:paired.endpoint,fingerprint:paired.certificate_sha256,serverID:paired.server_id,credential:paired.credential)
             if try store.cursor == nil {
-                let snapshot = try await transport.request("/v1/snapshot",as:Snapshot.self); try store.apply(snapshot)
+                let snapshot = try await transport.request("/v2/snapshot",as:Snapshot.self); try store.apply(snapshot)
             } else { try await pull(transport) }
             // Limit each invocation to bounded work. Later foreground cycles drain
             // a large outbox without letting background refresh run indefinitely.
             for _ in 0..<10 {
                 try Task.checkCancellation()
                 let sent = try store.uploads(); if sent.isEmpty { break }
-                struct Upload: Encodable { let version = 1; let mutations: [Mutation] }
-                let response = try await transport.request("/v1/upload",method:"POST",body:JSONEncoder().encode(Upload(mutations:sent)),as:UploadResponse.self)
+                struct Upload: Encodable { let version = 2; let mutations: [Mutation] }
+                let response = try await transport.request("/v2/upload",method:"POST",body:JSONEncoder().encode(Upload(mutations:sent)),as:UploadResponse.self)
                 try store.acknowledge(response,sent:sent)
             }
             try await pull(transport)
@@ -117,7 +118,7 @@ import Combine
         for _ in 0..<100 {
             try Task.checkCancellation()
             let cursor = try store.cursor ?? 0
-            let page = try await transport.request("/v1/changes?after=\(cursor)",as:Changes.self)
+            let page = try await transport.request("/v2/changes?after=\(cursor)",as:Changes.self)
             try store.apply(page)
             if !page.has_more { return }
         }

@@ -25,6 +25,26 @@ import UserNotifications
         var planned: [(String,Date,String,String)] = []
         for graph in records.compactMap(\.value) {
             if graph.kind == "task", ["completed","cancelled"].contains(graph.text("status")) { continue }
+            let task = graph.kind == "task" ? graph.record : graph.kind == "note" ? graph.linked_task : nil
+            if let task, task["kind"]?.text == "reminder", task["notification_owner"]?.text == "phone",
+               !["completed","cancelled"].contains(task["status"]?.text ?? ""),
+               let due = try? Dates.parse(task["due_at"]?.text ?? "") {
+                var next = due
+                let frequency = task["recurrence"]?.text ?? "none"
+                var calendar = Calendar(identifier:.gregorian)
+                calendar.timeZone = TimeZone(identifier:task["timezone_name"]?.text ?? "UTC") ?? .current
+                for _ in 0..<60 {
+                    if next > now && next < upper {
+                        planned.append(("tinker:task:" + (task["id"]?.text ?? graph.id) + "@" + Dates.stamp(next), next,
+                                        task["title"]?.text ?? graph.title, task["description"]?.text ?? ""))
+                    }
+                    guard frequency != "none" else { break }
+                    let component: Calendar.Component = frequency == "daily" ? .day : frequency == "weekly" ? .weekOfYear : frequency == "monthly" ? .month : .year
+                    guard let following = calendar.date(byAdding:component,value:1,to:next), following > next else { break }
+                    next = following
+                    if next >= upper { break }
+                }
+            }
             for reminder in graph.reminders where !reminder.completed && reminder.notification_owner == "phone" {
                 let fire = try Dates.parse(reminder.fire_at)
                 if graph.kind == "event" && !graph.text("recurrence").isEmpty {

@@ -5,7 +5,7 @@ source of truth; Keychain is the only bearer-credential store. No hosted account
 public endpoint, remote model, telemetry or unrelated desktop content belongs in
 this milestone. Never log pairing QR text, bearer tokens or private record bodies.
 
-Read `contracts/SYNC-v1.md`, `docs/ACCEPTANCE.md` and the desktop companion contract
+Read `contracts/SYNC-v2.md`, `docs/ACCEPTANCE.md` and the desktop companion contract
 before changing wire behavior. Maintain stable IDs, explicit tombstones, atomic
 parent/child graphs, durable replay, conflict preservation and commit-before-cursor
 advancement. Reconcile changes against the matching desktop code/fixture.

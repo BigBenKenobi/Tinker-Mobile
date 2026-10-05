@@ -100,19 +100,58 @@ struct GraphEditor: View {
     var body: some View {
         Form {
             Section {
-                TextField("Title",text:text("title"))
-                TextEditor(text:text(graph.kind == "note" ? "body" : "description")).frame(minHeight:150).accessibilityLabel("Text")
+                if graph.kind == "calendar" {
+                    TextField("Calendar name",text:text("name"))
+                    TextField("Colour (#RRGGBB)",text:text("color"))
+                    Toggle("Visible",isOn:flag("visible"))
+                } else {
+                    TextField("Title",text:text("title"))
+                    TextEditor(text:text(graph.kind == "note" ? "body" : "description")).frame(minHeight:150).accessibilityLabel("Text")
+                }
             }
-            if graph.kind == "note" { Section { Toggle("Pinned",isOn:flag("pinned")); Toggle("Archived",isOn:flag("archived")) } }
+            if graph.kind == "note" {
+                Section { Toggle("Pinned",isOn:flag("pinned")); Toggle("Archived",isOn:flag("archived")) }
+                Section("Note reminder") {
+                    Toggle("Remind me",isOn:Binding(get:{ graph.linked_task != nil },set:{ enabled in
+                        if enabled {
+                            let stamp = Dates.stamp(Date())
+                            graph.linked_task = ["id": .string(Dates.id("task")), "title": .string(graph.title),
+                                "description": .string(""), "status": .string("pending"),
+                                "due_at": .string(Dates.stamp(Date().addingTimeInterval(3600))),
+                                "created_at": .string(stamp), "updated_at": .string(stamp), "metadata_json": .string("{}"),
+                                "kind": .string("reminder"), "timezone_name": .string(TimeZone.current.identifier),
+                                "recurrence": .string("none"), "recurrence_anchor": .null, "paused": .bool(false),
+                                "last_fired_at": .null, "note_id": .string(graph.id), "notification_owner": .string("phone")]
+                        } else { graph.linked_task = nil; graph.activity = [] }
+                    }))
+                    if graph.linked_task != nil {
+                        DatePicker("Due",selection:Binding(get:{ (try? Dates.parse(graph.linked_task?["due_at"]?.text ?? "")) ?? Date() },
+                            set:{ graph.linked_task?["due_at"] = .string(Dates.stamp($0)) }))
+                        Picker("Repeat",selection:Binding(get:{ graph.linked_task?["recurrence"]?.text ?? "none" },
+                            set:{ graph.linked_task?["recurrence"] = .string($0) })) {
+                            ForEach(["none","daily","weekly","monthly","yearly"],id:\.self) { Text($0.capitalized).tag($0) }
+                        }
+                    }
+                }
+            }
             if graph.kind == "task" {
                 Section("Task") {
-                    Picker("Status",selection:text("status")) { ForEach(["pending","in_progress","completed","cancelled"],id:\.self) { Text($0.replacingOccurrences(of:"_",with:" ")).tag($0) } }
+                    Picker("Status",selection:text("status")) { ForEach(["pending","completed","cancelled"],id:\.self) { Text($0.replacingOccurrences(of:"_",with:" ")).tag($0) } }
                     Toggle("Due date",isOn:Binding(get:{ !graph.text("due_at").isEmpty },set:{ graph.record["due_at"] = $0 ? .string(Dates.stamp(Date())) : .null }))
-                    if !graph.text("due_at").isEmpty { DatePicker("Due",selection:date("due_at")) }
+                    if !graph.text("due_at").isEmpty {
+                        DatePicker("Due",selection:date("due_at"))
+                        Picker("Repeat",selection:text("recurrence")) { ForEach(["none","daily","weekly","monthly","yearly"],id:\.self) { Text($0.capitalized).tag($0) } }
+                        Text("This iPhone will deliver reminders created here. Desktop-owned reminders remain on Fedora.").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
             if graph.kind == "event" {
                 Section("Event") {
+                    Picker("Calendar",selection:text("calendar_id")) {
+                        ForEach(model.store.records.filter { $0.kind == "calendar" && $0.value != nil }) { row in
+                            Text(row.value?.text("name") ?? "Calendar").tag(row.id)
+                        }
+                    }
                     Toggle("All day",isOn:flag("all_day"))
                     DatePicker("Starts",selection:date("start_at"),displayedComponents:graph.flag("all_day") ? [.date] : [.date,.hourAndMinute])
                     DatePicker("Ends",selection:date("end_at"),displayedComponents:graph.flag("all_day") ? [.date] : [.date,.hourAndMinute])
@@ -127,7 +166,7 @@ struct GraphEditor: View {
                     if !graph.text("recurrence").isEmpty { Button("Change one occurrence") { addException = true } }
                 }
             }
-            Section("Linked reminders") {
+            if graph.kind == "event" { Section("Event reminders") {
                 ForEach(graph.reminders) { reminder in
                     Button { editingReminder = reminder } label: {
                         VStack(alignment:.leading) { Text((try? Dates.parse(reminder.fire_at).formatted()) ?? reminder.fire_at); Text(reminder.message + " · " + reminder.notification_owner).font(.caption) }
@@ -135,9 +174,9 @@ struct GraphEditor: View {
                 }.onDelete { graph.reminders.remove(atOffsets:$0) }
                 Button("Add reminder") { addReminder = true }
                 Text("Each reminder notifies on one device. A reminder's delivery device is fixed after creation.").font(.caption).foregroundStyle(.secondary)
-            }
+            } }
             if let error { Section { Text(error).foregroundStyle(.red) } }
-        }.navigationTitle(graph.kind == "note" ? "Note" : graph.kind == "task" ? "Task" : "Event")
+        }.navigationTitle(graph.kind == "note" ? "Note" : graph.kind == "task" ? "Task" : graph.kind == "calendar" ? "Calendar" : "Event")
         .toolbar {
             ToolbarItem(placement:.cancellationAction) { Button("Cancel") { dismiss() } }
             ToolbarItem(placement:.confirmationAction) { Button("Save") { save() } }
@@ -148,7 +187,11 @@ struct GraphEditor: View {
         .sheet(isPresented:$addException) { NavigationStack { ExceptionEditor(exception:EventException(id:Dates.id("exception"),event_id:graph.id,occurrence_at:graph.text("start_at"),cancelled:true,start_at:nil,end_at:nil,title:nil)) { graph.exceptions.append($0) } } }
     }
     private func save() {
-        graph.set("updated_at",Dates.stamp(Date()))
+        if graph.kind != "calendar" { graph.set("updated_at",Dates.stamp(Date())) }
+        if graph.kind == "note", graph.linked_task != nil {
+            graph.linked_task?["title"] = .string(graph.title)
+            graph.linked_task?["updated_at"] = .string(Dates.stamp(Date()))
+        }
         if graph.kind == "event", graph.flag("all_day") {
             var calendar = Calendar(identifier:.gregorian); calendar.timeZone = TimeZone(identifier:graph.text("timezone")) ?? .current
             if let start = try? Dates.parse(graph.text("start_at")), let end = try? Dates.parse(graph.text("end_at")) {
@@ -265,7 +308,15 @@ struct CalendarView: View {
     @State private var exporting = false
     @State private var document = CalendarFile()
     @State private var deleting: RecordVersion?
+    @State private var editingCalendar: RecordVersion?
+    @State private var newCalendar = false
     private var events: [Graph] { model.store.records.filter { $0.kind == "event" }.compactMap(\.value) }
+    private var calendars: [RecordVersion] { model.store.records.filter { $0.kind == "calendar" && $0.value != nil } }
+    private var draftEvent: Graph {
+        var graph = Graph.new("event",now:selectedDay)
+        if let calendar = calendars.first { graph.set("calendar_id",calendar.id) }
+        return graph
+    }
     private var occurrences: [Occurrence] {
         let start = Calendar.current.startOfDay(for:selectedDay), end = Calendar.current.date(byAdding:.day,value:1,to:start)!
         return events.flatMap { (try? Occurrence.expand($0,lower:start,upper:end)) ?? [] }.sorted { $0.start < $1.start }
@@ -273,6 +324,14 @@ struct CalendarView: View {
     var body: some View {
         List {
             Section { SyncStatus(model:model) }
+            Section("Calendars") {
+                ForEach(calendars) { row in
+                    Button { editingCalendar = row } label: {
+                        Label(row.value?.text("name") ?? "Calendar", systemImage:"calendar")
+                    }
+                }
+                Button("Add calendar") { newCalendar = true }
+            }
             Section { DatePicker("Selected day",selection:$selectedDay,displayedComponents:.date).datePickerStyle(.graphical) }
             Section(selectedDay.formatted(date:.complete,time:.omitted)) {
                 if search.isEmpty {
@@ -290,14 +349,16 @@ struct CalendarView: View {
             }
         }.navigationTitle("Calendar").searchable(text:$search).refreshable { await model.sync() }
         .toolbar {
-            Button { newItem = true } label: { Label("New event",systemImage:"plus") }
+            Button { if calendars.isEmpty { newCalendar = true } else { newItem = true } } label: { Label("New event",systemImage:"plus") }
             Menu {
                 Button("Import ICS from Files") { importing = true }
                 Button("Export ICS to Files") { do { document = CalendarFile(text:try ICS.export(events)); exporting = true } catch { model.error = error.localizedDescription } }
             } label: { Label("Calendar files",systemImage:"square.and.arrow.up") }
         }
         .sheet(item:$editing) { r in NavigationStack { GraphEditor(model:model,graph:r.value!,revision:r.revision) } }
-        .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:Graph.new("event",now:selectedDay),revision:0) } }
+        .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:draftEvent,revision:0) } }
+        .sheet(item:$editingCalendar) { r in NavigationStack { GraphEditor(model:model,graph:r.value!,revision:r.revision) } }
+        .sheet(isPresented:$newCalendar) { NavigationStack { GraphEditor(model:model,graph:Graph.new("calendar"),revision:0) } }
         .fileImporter(isPresented:$importing,allowedContentTypes:CalendarFile.readableContentTypes) { result in
             do {
                 let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }

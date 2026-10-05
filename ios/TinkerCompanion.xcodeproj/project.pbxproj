@@ -26,7 +26,7 @@ B890FFC71489189C156F3E8F = { isa = PBXBuildFile; fileRef = 2ECFD76E91A1A34F70B1F
 A5B1906093CC28F4822CC13B = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CompanionTests.swift"; sourceTree = "<group>"; };
 FEFCE4E7DAD4C01CC73E7542 = { isa = PBXBuildFile; fileRef = A5B1906093CC28F4822CC13B; };
 9B929F2E78A867E4D55C0E38 = { isa = PBXGroup; children = (A5B1906093CC28F4822CC13B,); path = "TinkerCompanionTests"; sourceTree = "<group>"; };
-8A31B580AE43E945CED0A5E0 = { isa = PBXFileReference; lastKnownFileType = text.json; name = "snapshot-v1.json"; path = "../contracts/snapshot-v1.json"; sourceTree = "<group>"; };
+8A31B580AE43E945CED0A5E0 = { isa = PBXFileReference; lastKnownFileType = text.json; name = "snapshot-v2.json"; path = "../contracts/snapshot-v2.json"; sourceTree = "<group>"; };
 F8A2DE539EBA355A3807D729 = { isa = PBXBuildFile; fileRef = 8A31B580AE43E945CED0A5E0; };
 681C948D238C526E9E3424E0 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = TinkerCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 F739566ED5280322FF98A798 = { isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = TinkerCompanionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };

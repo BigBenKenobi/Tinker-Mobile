@@ -90,7 +90,7 @@ struct ICS {
                 continue
             }
             guard bases[uid] == nil else { throw CompanionError("Duplicate event UID") }
-            var g = Graph.new("event"); g.set("id",uid); g.set("title",title); g.set("start_at",Dates.stamp(start)); g.set("end_at",Dates.stamp(end)); g.record["all_day"] = .bool(allDay); g.set("timezone",zone); g.optional("recurrence",repeatRule)
+            var g = Graph.new("event"); g.set("id",uid); g.set("ics_uid",uid); g.set("title",title); g.set("start_at",Dates.stamp(start)); g.set("end_at",Dates.stamp(end)); g.record["all_day"] = .bool(allDay); g.set("timezone",zone); g.optional("recurrence",repeatRule)
             g.set("description",unescape(try one("DESCRIPTION","")!.value)); g.set("location",unescape(try one("LOCATION","")!.value))
             for a in alarms {
                 guard Set(a.keys).isSubset(of:["ACTION","TRIGGER","DESCRIPTION"]), a.values.allSatisfy({ $0.count == 1 }), a["ACTION"]?.first?.value == "DISPLAY", let trigger = a["TRIGGER"]?.first else { throw CompanionError("Only one-shot DISPLAY alarms are supported") }
@@ -121,7 +121,8 @@ struct ICS {
             guard bases[uid] != nil else { throw CompanionError("Exception has no parent event in this file") }
             bases[uid]!.exceptions.removeAll { $0.occurrence_at == exception.occurrence_at }; bases[uid]!.exceptions.append(exception)
         }
-        let result = bases.values.sorted { $0.id < $1.id }; for graph in result { try graph.validate() }; return result
+        // The owning calendar is chosen by LocalStore after parsing succeeds.
+        return bases.values.sorted { $0.id < $1.id }
     }
     static func export(_ graphs: [Graph]) throws -> String {
         var lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Tinker//Companion 1//EN","CALSCALE:GREGORIAN"]
