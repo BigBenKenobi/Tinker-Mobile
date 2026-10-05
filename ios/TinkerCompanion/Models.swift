@@ -137,12 +137,14 @@ struct Graph: Codable, Equatable, Identifiable {
             record["end_at"] = .string(native["all_day"]?.flag == true ? Self.dayAfter(end) : end)
             record["recurrence"] = .string(Self.rule(native))
         }
-        reminders = try c.decode([[String: JSONValue]].self, forKey: .reminders).map { row in
+        let alarmRows: [[String: JSONValue]] = try c.decode([[String: JSONValue]].self, forKey: .reminders)
+        reminders = alarmRows.map { row in
             Reminder(id:row["id"]?.text ?? "", owner_kind:"event", owner_id:row["event_id"]?.text ?? "",
                      fire_at:row["fire_at"]?.text ?? "", message:row["message"]?.text ?? "",
                      notification_owner:row["notification_owner"]?.text ?? "phone", completed:row["completed"]?.flag ?? false)
         }
-        exceptions = try c.decode([[String: JSONValue]].self, forKey: .exceptions).map { row in
+        let exceptionRows: [[String: JSONValue]] = try c.decode([[String: JSONValue]].self, forKey: .exceptions)
+        exceptions = exceptionRows.map { row in
             let original = row["original_start"]?.text ?? ""
             let replacement = row["replacement_json"]?.text ?? ""
             let object = (try? JSONDecoder().decode([String: JSONValue].self, from:Data(replacement.utf8))) ?? [:]
