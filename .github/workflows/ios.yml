@@ -1,0 +1,39 @@
+name: iPhone companion
+on:
+  pull_request:
+  push:
+    branches: [feat/iphone-companion-m1]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick an available iPhone Simulator
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available -j > /tmp/tinker-simulators.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('/tmp/tinker-simulators.json'))
+          devices = [d for runtime, values in data['devices'].items() if '.iOS-' in runtime for d in values if d['name'].startswith('iPhone')]
+          if not devices:
+              raise SystemExit('No iPhone Simulator installed')
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('TINKER_SIMULATOR_ID=' + devices[0]['udid'] + '\n')
+          PY
+      - name: Build and test native iPhone app
+        run: |
+          xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test
+      - name: Preserve Xcode results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-results
+          path: /tmp/TinkerCompanion.xcresult
