@@ -13,14 +13,14 @@ Both repositories use `feat/iphone-companion-m1` and the same version-one contra
 | Desktop with new companion tests | 106 tests passed; no skips; isolated/offscreen |
 | Desktop offscreen smoke | Recorded in matching desktop evidence |
 | Swift syntax parse and Xcode OpenStep/plist structure | Passed static checks; not a build |
-| Shared desktop-generated snapshot fixture | Included in XCTest; Swift execution pending |
-| Xcode build and 11 XCTest cases in Simulator | Pending a recorded macOS CI/Xcode result |
+| Shared desktop-generated snapshot fixture | Passed in Simulator XCTest |
+| Xcode build and 11 XCTest cases in Simulator | PASS: Xcode 16.4, iPhone 16 Pro/iOS 18.5; [recorded evidence](XCODE-SIMULATOR.md) |
 | Native Fedora UI, firewall and Bonjour over LAN | Pending |
 | Physical iPhone pairing/offline/reconnect/notifications/Files | Pending |
 
 ## Mac / Simulator gate
 
-Build/Test the checked-in project and resolve all compiler/test failures. Verify
+Automated build and 11 tests passed on the code commit recorded in [Xcode evidence](XCODE-SIMULATOR.md). Manual Simulator UI and minimum-iOS-runtime acceptance remain pending. Verify
 three screens at large Dynamic Type, VoiceOver labels, search, archive/pin, task
 completion, recurrence weekdays/end limits, date/timezone behavior, draft retention,
 delete and conflict handling. Use two temporary desktop databases and the shared

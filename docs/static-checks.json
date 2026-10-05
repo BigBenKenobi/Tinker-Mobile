@@ -4,6 +4,6 @@
   "xcode_project_objects": 52,
   "plist_and_scheme": "parsed",
   "shared_contract_and_fixture": "byte-identical",
-  "ios_build": "PENDING: no Xcode result",
+  "ios_build": "PASS: Xcode 16.4 / iPhone 16 Pro Simulator iOS 18.5, 11 tests, 0 failures; code f84d5c02f3f9017e5f506a47a45c871a25ffff83",
   "physical_iphone": "PENDING"
 }
