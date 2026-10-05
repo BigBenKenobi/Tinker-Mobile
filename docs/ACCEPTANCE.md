@@ -1,6 +1,6 @@
 # Protocol-two integration status — 6 October 2026
 
-The historical evidence below applies to the **protocol-one draft commit only**. Protocol two now targets desktop schema five with the existing Notes, Tasks, and native Calendar panels. Desktop isolated tests: **134 passed** on Fedora; the offscreen GUI and loopback listener smoke pass. The final mobile workflow commit `387d9d1f843d6d6f098e7a50baf4c2ab4614fbbb` passed [Simulator XCTest and the Xcode 26 unsigned device IPA build](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37386229760). The IPA was downloaded to the ignored local `dist/` directory (475 KiB, ZIP integrity checked). Fedora LAN interaction, physical iPhone/SideStore install, and a real signing refresh remain open.
+The historical evidence below applies to the **protocol-one draft commit only**. Protocol two now targets desktop schema five with the existing Notes, Tasks, and native Calendar panels. Desktop isolated tests: **135 passed** on Fedora; the offscreen GUI and loopback listener smoke pass. The final mobile workflow commit `387d9d1f843d6d6f098e7a50baf4c2ab4614fbbb` passed [Simulator XCTest and the Xcode 26 unsigned device IPA build](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37386229760). The IPA was downloaded to the ignored local `dist/` directory (475 KiB, ZIP integrity checked). Fedora LAN interaction, physical iPhone/SideStore install, and a real signing refresh remain open.
 
 # First companion milestone acceptance
 
