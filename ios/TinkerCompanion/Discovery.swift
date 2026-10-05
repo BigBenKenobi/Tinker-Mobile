@@ -3,11 +3,13 @@
 import Foundation
 import Darwin
 
-@MainActor final class Discovery: NSObject, ObservableObject, NetServiceBrowserDelegate, NetServiceDelegate {
+@MainActor final class Discovery: NSObject, ObservableObject, @preconcurrency NetServiceBrowserDelegate, @preconcurrency NetServiceDelegate {
     @Published private(set) var endpoints: [String:String] = [:]
     private let browser = NetServiceBrowser()
     private var services: [NetService] = []
     override init() { super.init(); browser.delegate = self }
+    // Foundation delegates use the main run loop on which this browser is started.
+    // The pre-concurrency conformances state that existing Objective-C contract.
     func start() { browser.searchForServices(ofType:"_tinker._tcp.",inDomain:"local.") }
     func stop() { browser.stop(); services.forEach { $0.stop() }; services.removeAll(); endpoints.removeAll() }
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
