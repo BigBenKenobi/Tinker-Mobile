@@ -17,9 +17,12 @@ import Combine
 
     init(path: URL) throws {
         try FileManager.default.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
-        guard sqlite3_open(path.path, &database) == SQLITE_OK else { throw CompanionError("Cannot open local database") }
+        guard sqlite3_open(path.path, &database) == SQLITE_OK else {
+            sqlite3_close(database); database = nil
+            throw CompanionError("Cannot open local database")
+        }
         do {
-            _ = try rows("PRAGMA journal_mode=WAL"); try execute("PRAGMA synchronous=FULL"); try execute("PRAGMA busy_timeout=5000")
+            _ = try rows("PRAGMA journal_mode=WAL"); try execute("PRAGMA synchronous=FULL"); _ = try rows("PRAGMA busy_timeout=5000")
             let schema = Int(try rows("PRAGMA user_version").first?[0] ?? "0") ?? 0
             guard schema <= 1 else { throw CompanionError("This database needs a newer Tinker build") }
             if schema == 0 {

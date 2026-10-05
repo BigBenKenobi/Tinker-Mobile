@@ -1,8 +1,6 @@
 name: iPhone companion
 on:
   pull_request:
-  push:
-    branches: [feat/iphone-companion-m1]
   workflow_dispatch:
 permissions:
   contents: read
