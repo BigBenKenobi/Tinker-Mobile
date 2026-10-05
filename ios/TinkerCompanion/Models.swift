@@ -144,13 +144,13 @@ struct Graph: Codable, Equatable, Identifiable {
                      notification_owner:row["notification_owner"]?.text ?? "phone", completed:row["completed"]?.flag ?? false)
         }
         let exceptionRows: [[String: JSONValue]] = try c.decode([[String: JSONValue]].self, forKey: .exceptions)
-        exceptions = exceptionRows.map { row in
+        exceptions = exceptionRows.map { (row: [String: JSONValue]) -> EventException in
             let original = row["original_start"]?.text ?? ""
             let replacement = row["replacement_json"]?.text ?? ""
             let object = (try? JSONDecoder().decode([String: JSONValue].self, from:Data(replacement.utf8))) ?? [:]
             return EventException(id:original, event_id:row["event_id"]?.text ?? "", occurrence_at:Self.instant(original),
-                                  cancelled:row["kind"]?.text == "cancelled", start_at:object["start"]?.text.map(Self.instant),
-                                  end_at:object["end"]?.text.map(Self.instant), title:object["title"]?.text, originalValue:object)
+                                  cancelled:row["kind"]?.text == "cancelled", start_at:object["start"].map { Self.instant($0.text) },
+                                  end_at:object["end"].map { Self.instant($0.text) }, title:object["title"]?.text, originalValue:object)
         }
     }
     func encode(to encoder: Encoder) throws {
