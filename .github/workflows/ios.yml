@@ -44,8 +44,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Confirm Xcode 26 toolchain
         run: |
-          xcodebuild -version
-          xcodebuild -version | grep -q '^Xcode 26\.'
+          xcodebuild -version > "$RUNNER_TEMP/xcode-version.txt"
+          cat "$RUNNER_TEMP/xcode-version.txt"
+          grep -q '^Xcode 26\.' "$RUNNER_TEMP/xcode-version.txt"
       - name: Build unsigned iPhone app
         run: |
           xcodebuild -project ios/TinkerCompanion.xcodeproj \
