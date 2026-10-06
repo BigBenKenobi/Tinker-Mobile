@@ -2,6 +2,7 @@
 // One presentation owner retains temporary drafts and appearance across tools;
 // a single active stack avoids hidden navigation controllers during rotation.
 import SwiftUI
+import UIKit
 
 struct RootView: View {
     @ObservedObject var model: AppModel
@@ -21,7 +22,7 @@ struct RootView: View {
                     .background(presentation.theme.color("background").opacity(["new_chat","theme"].contains(presentation.destination) ? 0 : 1))
                     .toolbar {
                         ToolbarItem(placement:.topBarLeading) {
-                            Button { withAnimation { drawer.toggle() } } label: { Label("Tools",systemImage:"line.3.horizontal") }
+                            Button { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil); withAnimation { drawer.toggle() } } label: { Label("Tools",systemImage:"line.3.horizontal") }
                                 .accessibilityIdentifier("shell.tools").frame(minWidth:44,minHeight:44)
                         }
                         ToolbarItem(placement:.topBarTrailing) {

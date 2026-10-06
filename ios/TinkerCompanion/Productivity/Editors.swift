@@ -199,8 +199,15 @@ struct RecurrenceEditor: View {
 
 struct ReminderEditor: View {
     @State var reminder: Reminder
+    private let initialReminder: Reminder
+    @State private var discard = false
     let isNew: Bool
     let save: (Reminder) -> Void
+    /// Child changes are committed to the parent draft only after explicit Done.
+    init(reminder: Reminder,isNew: Bool,save: @escaping (Reminder) -> Void) {
+        _reminder = State(initialValue:reminder); initialReminder = reminder
+        self.isNew = isNew; self.save = save
+    }
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         Form {
@@ -209,8 +216,12 @@ struct ReminderEditor: View {
             Picker("Notify on",selection:$reminder.notification_owner) { Text("iPhone").tag("phone"); Text("Fedora").tag("desktop") }.disabled(!isNew)
             Toggle("Completed",isOn:$reminder.completed)
         }.navigationTitle("Reminder").toolbar {
-            ToolbarItem(placement:.cancellationAction) { Button("Cancel") { dismiss() } }
+            ToolbarItem(placement:.cancellationAction) { Button("Cancel") { if reminder != initialReminder { discard = true } else { dismiss() } } }
             ToolbarItem(placement:.confirmationAction) { Button("Done") { save(reminder); dismiss() } }
+        }.interactiveDismissDisabled(reminder != initialReminder)
+        .confirmationDialog("Discard reminder changes?",isPresented:$discard,titleVisibility:.visible) {
+            Button("Discard",role:.destructive) { dismiss() }
+            Button("Keep editing",role:.cancel) {}
         }
     }
 }
@@ -218,7 +229,12 @@ struct ReminderEditor: View {
 
 struct ExceptionEditor: View {
     @State var exception: EventException
+    private let initialException: EventException
+    @State private var discard = false
     let save: (EventException) -> Void
+    init(exception: EventException,save: @escaping (EventException) -> Void) {
+        _exception = State(initialValue:exception); initialException = exception; self.save = save
+    }
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         Form {
@@ -230,8 +246,12 @@ struct ExceptionEditor: View {
                 TextField("Override title",text:Binding(get:{ exception.title ?? "" },set:{ exception.title = $0.isEmpty ? nil : $0 }))
             }
         }.navigationTitle("One occurrence").toolbar {
-            ToolbarItem(placement:.cancellationAction) { Button("Cancel") { dismiss() } }
+            ToolbarItem(placement:.cancellationAction) { Button("Cancel") { if exception != initialException { discard = true } else { dismiss() } } }
             ToolbarItem(placement:.confirmationAction) { Button("Done") { save(exception); dismiss() } }
+        }.interactiveDismissDisabled(exception != initialException)
+        .confirmationDialog("Discard occurrence changes?",isPresented:$discard,titleVisibility:.visible) {
+            Button("Discard",role:.destructive) { dismiss() }
+            Button("Keep editing",role:.cancel) {}
         }
     }
 }

@@ -18,7 +18,15 @@ def escape(value):
 def main():
     """Read a current build log and emit file diagnostics or generic test errors."""
     root = Path.cwd()
+    hierarchy = None
     for line in Path(sys.argv[1]).read_text(errors="replace").splitlines():
+        if line.strip() == "TINKER_UI_HIERARCHY_BEGIN":
+            hierarchy = []; continue
+        if line.strip() == "TINKER_UI_HIERARCHY_END" and hierarchy is not None:
+            print("::notice title=Isolated UI hierarchy::" + escape("\n".join(hierarchy)[:50000]))
+            hierarchy = None; continue
+        if hierarchy is not None:
+            hierarchy.append(line); continue
         match = re.search(r"^(.+\.swift):(\d+)(?::\d+)?: error: (.+)", line)
         if match:
             path, number, message = match.groups()

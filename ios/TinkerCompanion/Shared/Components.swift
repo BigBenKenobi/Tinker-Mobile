@@ -59,8 +59,12 @@ struct WorkspaceLayout<Content: View>: View {
 /// Apply semantic row surfaces to native Lists/Forms, including editor sheets.
 struct PhoneSectionStyle: ViewModifier {
     @EnvironmentObject private var presentation: PresentationStore
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     func body(content: Content) -> some View {
-        content.listRowBackground(presentation.theme.color("panel"))
+        content.listRowBackground(Group {
+            if presentation.theme.typography.frosted && !reduceTransparency { Rectangle().fill(.regularMaterial) }
+            else { presentation.theme.color("panel") }
+        })
     }
 }
 extension View {

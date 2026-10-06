@@ -49,6 +49,17 @@ jobs:
           summary_status=$?
           if [ "$xcode_status" -eq 0 ]; then exit "$summary_status"; fi
           exit "$xcode_status"
+      - name: Export screenshot attachments
+        if: always()
+        run: |
+          xcrun xcresulttool export attachments --path /tmp/TinkerCompanion.xcresult --output-path "$RUNNER_TEMP/tinker-screenshots"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'tinker-screenshots'
+          images = [p for p in root.rglob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg')]
+          print('::notice title=XCTest screenshots::Exported ' + str(len(images)) + ' image attachments')
+          PY
       - name: Preserve Xcode results
         if: always()
         uses: actions/upload-artifact@v4
@@ -58,6 +69,7 @@ jobs:
             /tmp/TinkerCompanion.xcresult
             ${{ runner.temp }}/tinker-xcode.log
             ${{ runner.temp }}/tinker-test-summary.json
+            ${{ runner.temp }}/tinker-screenshots
           retention-days: 3
   unsigned-device-ipa:
     if: github.event_name == 'workflow_dispatch'

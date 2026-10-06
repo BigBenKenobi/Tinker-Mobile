@@ -21,10 +21,17 @@ import UIKit
         app.buttons["shell.tools"].tap()
         let button = app.buttons["route." + route]
         for _ in 0..<10 where !button.isHittable { app.swipeUp() }
+        if !button.isHittable {
+            print("TINKER_UI_HIERARCHY_BEGIN")
+            print(app.debugDescription)
+            print("TINKER_UI_HIERARCHY_END")
+        }
         XCTAssertTrue(button.isHittable,"Unreachable destination: " + route)
         button.tap()
         let title = ["new_chat":"Tinker","search":"Search","email":"Email","tools":"Tools","brain":"Brain","calendar":"Calendar","compare":"Model Compare","cookbook":"Cookbook","research":"Deep Research","gallery":"Gallery","library":"Library","notes":"Notes","tasks":"Tasks","companion":"Companion","theme":"Theme","settings":"Settings","account":"Account","model_selector":"Models"][route]!
-        XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout:5))
+        let arrived = app.navigationBars[title].waitForExistence(timeout:5)
+        if !arrived { print("TINKER_UI_HIERARCHY_BEGIN"); print(app.debugDescription); print("TINKER_UI_HIERARCHY_END") }
+        XCTAssertTrue(arrived,"Expected destination: " + title)
     }
     /// A composer draft must survive destination changes without a domain write.
     func testComposerSurvivesNavigation() {
@@ -61,9 +68,13 @@ import UIKit
             let app = launch(fixture:fixture,largeText:true)
             XCTAssertTrue(app.buttons["shell.tools"].waitForExistence(timeout:10))
             navigate("notes",in:app)
+            if fixture == "populated" {
+                let note = app.buttons["Preview note"]
+                for _ in 0..<8 where !note.isHittable { app.swipeUp() }
+                XCTAssertTrue(note.isHittable,"Populated note must remain reachable at large text")
+            }
             let attachment = XCTAttachment(screenshot:app.screenshot())
             attachment.name = fixture + "-Notes-accessibility-XXXL"; attachment.lifetime = .keepAlways; add(attachment)
-            if fixture == "populated" { XCTAssertTrue(app.buttons["Preview note"].waitForExistence(timeout:5)) }
             app.terminate()
         }
     }
