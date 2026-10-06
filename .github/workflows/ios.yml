@@ -10,7 +10,11 @@ concurrency:
 jobs:
   simulator:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        phone: [small, large]
     steps:
       - uses: actions/checkout@v4
       - name: Pick an available iPhone Simulator
@@ -23,9 +27,17 @@ jobs:
           devices = [d for runtime, values in data['devices'].items() if '.iOS-' in runtime for d in values if d['name'].startswith('iPhone')]
           if not devices:
               raise SystemExit('No iPhone Simulator installed')
+          size = "${{ matrix.phone }}"
+          preferred = ['iPhone SE (3rd generation)', 'iPhone 16', 'iPhone 16 Pro'] if size == 'small' else ['iPhone 16 Pro Max', 'iPhone 16 Plus']
+          selected = next((d for name in preferred for d in devices if d['name'] == name), None)
+          if selected is None:
+              raise SystemExit('No supported ' + size + ' iPhone Simulator installed')
+          print('Selected Simulator:', selected['name'], selected['udid'])
           with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write('TINKER_SIMULATOR_ID=' + devices[0]['udid'] + '\n')
+              env.write('TINKER_SIMULATOR_ID=' + selected['udid'] + '\n')
           PY
+      - name: Validate project generator
+        run: python3 -m unittest discover -s scripts/tests -v
       - name: Build and test native iPhone app
         run: |
           xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test
@@ -33,7 +45,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: xcode-results
+          name: xcode-results-${{ matrix.phone }}
           path: /tmp/TinkerCompanion.xcresult
           retention-days: 3
   unsigned-device-ipa:

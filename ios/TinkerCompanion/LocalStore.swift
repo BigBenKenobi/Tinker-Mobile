@@ -91,6 +91,11 @@ import Combine
     private func setState(_ key: String, _ value: String) throws {
         try execute("INSERT INTO state VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", [key, value])
     }
+    /// Namespaced phone preferences never enter outbox, snapshots or sync cursors.
+    func presentationValue(_ key: String) throws -> String? { try state("phone.presentation." + key) }
+    func savePresentationValue(_ key: String, value: String) throws {
+        try setState("phone.presentation." + key,value)
+    }
     var cursor: Int? { get throws { try state("cursor").flatMap(Int.init) } }
     func uploads() throws -> [Mutation] { try rows("SELECT mutation FROM outbox ORDER BY kind,id LIMIT 100").map { try decode($0[0]!, as: Mutation.self) } }
 

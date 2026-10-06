@@ -4,6 +4,16 @@ Native SwiftUI iPhone companion, iOS 17+. Notes, Tasks and Calendar use an on-de
 SQLite store and durable offline edits. Sync is local-network only, with the
 Fedora desktop app open. No hosted runtime, account or model service is used.
 
+## Full iPhone interface review
+
+The feat/iphone-full-interface branch adds the desktop-aligned shell, dedicated
+visual workspaces, phone-only appearance persistence, all 16 palettes, Files
+theme exchange and bounded backgrounds. Unsupported services are visibly
+disabled; temporary drafts never become simulated sends or durable records.
+
+See [coverage](docs/IPHONE-COVERAGE.md) and [verification](docs/IPHONE-VERIFICATION.md).
+This is an implementation review, not native or physical-device acceptance.
+
 ## Build and run
 
 Open `ios/TinkerCompanion.xcodeproj` on a Mac with Xcode supporting iOS 17+, select
@@ -54,9 +64,8 @@ recurrence and per-occurrence changes, linked reminders, Files ICS import/export
 Conflicts preserve complete versions and require an explicit choice.
 
 The recurrence/ICS subset and reminder budgets are documented in
-[the shared sync contract](contracts/SYNC-v1.md). Full RFC5545, iPad layouts, chat,
-other workspaces, animated desktop themes, hosted sync and remote models are later
-milestones. OS notifications cannot guarantee delivery of changes not yet synced.
+[the shared sync contract](contracts/SYNC-v1.md). Full RFC5545, iPad layouts, hosted sync and remote models remain unavailable. Other workspaces provide visual
+layouts and disabled operations; Chat has a temporary composer only. OS notifications cannot guarantee delivery of changes not yet synced.
 
 See [acceptance](docs/ACCEPTANCE.md) for verified checks and pending gates. Linux
 cannot compile/test UIKit, SwiftUI, Keychain, VisionKit, Bonjour permissions or

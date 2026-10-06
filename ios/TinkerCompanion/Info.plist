@@ -11,7 +11,7 @@
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UILaunchScreen</key><dict/>
 <key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/><key>UISceneConfigurations</key><dict/></dict>
-<key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
+<key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
 <key>NSCameraUsageDescription</key><string>Scan a short-lived Tinker desktop pairing QR code.</string>
 <key>NSLocalNetworkUsageDescription</key><string>Find and sync Notes, Tasks, and Calendar with your open Fedora Tinker app on the same network.</string>
 <key>NSBonjourServices</key><array><string>_tinker._tcp</string></array>

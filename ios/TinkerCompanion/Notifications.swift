@@ -8,17 +8,22 @@ import UserNotifications
 @MainActor final class Notifications: NSObject, UNUserNotificationCenterDelegate, ObservableObject {
     @Published private(set) var status = "Notifications have not been enabled"
     private let center = UNUserNotificationCenter.current()
-    override init() { super.init(); center.delegate = self }
+    private let isolated: Bool
+    /// Isolated UI fixtures never claim the notification-center delegate or permissions.
+    init(isolated: Bool = false) { self.isolated = isolated; super.init(); if !isolated { center.delegate = self } }
     func authorize() async {
+        guard !isolated else { return }
         do { let allowed = try await center.requestAuthorization(options:[.alert,.sound,.badge]); status = allowed ? "Notifications enabled" : "Notifications are disabled in iPhone Settings" }
         catch { status = error.localizedDescription }
     }
     func cancelAll() async {
+        guard !isolated else { return }
         let ids = await center.pendingNotificationRequests().filter { $0.identifier.hasPrefix("tinker:") }.map(\.identifier)
         center.removePendingNotificationRequests(withIdentifiers:ids)
         center.removeAllDeliveredNotifications()
     }
     func reconcile(_ records: [RecordVersion], now: Date = Date()) async throws {
+        guard !isolated else { return }
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { status = "Enable notifications in iPhone Settings"; return }
         let upper = now.addingTimeInterval(30 * 86400)
