@@ -49,7 +49,7 @@ def configurations(name, settings):
 
 app_group,app_builds=files('TinkerCompanion')
 test_group,test_builds=files('TinkerCompanionTests')
-fixture=obj('snapshot-fixture','isa = PBXFileReference; lastKnownFileType = text.json; name = "snapshot-v1.json"; path = "../contracts/snapshot-v1.json"; sourceTree = "<group>";')
+fixture=obj('snapshot-fixture','isa = PBXFileReference; lastKnownFileType = text.json; name = "snapshot-v2.json"; path = "../contracts/snapshot-v2.json"; sourceTree = "<group>";')
 fixture_build=obj('fixture-build',f'isa = PBXBuildFile; fileRef = {fixture};')
 app_product=obj('app-product','isa = PBXFileReference; explicitFileType = wrapper.application; path = TinkerCompanion.app; sourceTree = BUILT_PRODUCTS_DIR;')
 test_product=obj('test-product','isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = TinkerCompanionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR;')

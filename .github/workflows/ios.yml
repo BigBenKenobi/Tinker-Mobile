@@ -13,6 +13,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Verify generated Xcode project is current
+        run: |
+          python3 scripts/generate_xcode_project.py
+          git diff --exit-code -- ios/TinkerCompanion.xcodeproj
       - name: Pick an available iPhone Simulator
         run: |
           xcodebuild -version
