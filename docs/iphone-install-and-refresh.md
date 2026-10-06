@@ -21,9 +21,13 @@ The first release pairs one phone on the same Wi-Fi. Protocol two deliberately r
 3. Send the downloaded IPA to the iPhone with Files/AirDrop or another normal file transfer, then import it into SideStore. SideStore signs it on the phone; confirm Tinker appears under **My Apps**. SideStore and Tinker use two of the free account's three app slots.
 4. Open Desktop Tinker → **iPhone Sync**, enter Fedora's current Wi-Fi IPv4 address, start local sync, and show the two-minute QR. On the iPhone, open Companion → scan the QR. The two apps should show connected status while both are open on the same network.
 
+On the current SideStore nightly, a pairing file can show **Configured** while **Preferred Protocol** still says **None**. If device registration then says no valid pairing file is loaded, press and hold the **Remote Pairing File** card in SideStore's Pairing File Management, choose **Set as Preferred**, reopen SideStore, and retry registration. Do not reset the configured files first. This follows SideStore's [pairing-file selection code](https://github.com/SideStore/SideStore/blob/develop/SideStore/Views/Settings/Advanced/PairingFile/PairingFileManagementView.swift) and was needed on the first iOS 27.0.1 install. Scan the desktop QR using **Tinker → Companion → Scan desktop pairing QR**; the ordinary iPhone Camera opens its link in a browser.
+
 ## Real-device acceptance
 
-Complete this before relying on weekly use:
+The minimum first-device cycle was completed on **6 October 2026** with iOS 27.0.1, SideStore nightly, and the [corrected protocol-two IPA build](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37421313209): the phone installed and paired with Fedora, a desktop note reached the phone, an independently created phone task survived an offline edit and reached the desktop, a phone-owned local reminder arrived, and manual refresh of both SideStore and Tinker retained the app, pairing, note, and task. Deleting the test note on the phone and the test task on the desktop then synced both deletions. The corrected IPA was installed over the earlier build using the same app identity. The desktop's isolated tests cover migration, conflicts, linked records, calendar events, and exceptions; those broader cases have not all been repeated on the physical phone.
+
+For later device regression checks:
 
 - Install Tinker from the unsigned IPA and pair it with Fedora.
 - On each device, change a note, independent task, note reminder, calendar/event, and an event exception while the other device is offline. Reconnect and inspect both sides. Confirm that deleting an item produces a deletion on the other side and that concurrent edits remain visible as a conflict until resolved.
@@ -33,6 +37,6 @@ Complete this before relying on weekly use:
 
 ## Five-day routine
 
-Create a repeating reminder on the iPhone for about **day five after the initial install**. Each time it fires: connect to Wi-Fi, enable LocalDevVPN, open SideStore → My Apps, manually refresh **SideStore and Tinker**, then launch Tinker and confirm both the app and its local data open. Background refresh is a bonus, not the schedule. Apple's [Personal Team documentation](https://developer.apple.com/help/account/basics/about-your-developer-account) says free provisioning profiles expire seven days after issuance. [SideStore's prerequisites](https://docs.sidestore.io/docs/installation/prerequisites) require Wi-Fi and LocalDevVPN for installing, updating, and refreshing.
+Create a reminder in the iPhone's built-in Reminders app for **11 October 2026**, about five days after the first successful refresh, with a **custom repeat every five days**. Each time it fires: connect to Wi-Fi, enable LocalDevVPN, open SideStore → My Apps, manually refresh **SideStore and Tinker**, then launch Tinker and confirm both the app and its local data open. A seven-day repeat after a day-five refresh would put later alerts at the next expiry boundary. Background refresh is a bonus, not the schedule. Apple's [Personal Team documentation](https://developer.apple.com/help/account/basics/about-your-developer-account) says free provisioning profiles expire seven days after issuance. [SideStore's prerequisites](https://docs.sidestore.io/docs/installation/prerequisites) require Wi-Fi and LocalDevVPN for installing, updating, and refreshing.
 
 If SideStore cannot see the phone after an iOS update, use iloader to renew the pairing file as described in its installation guide. The one-time Fedora tools remain useful for that recovery.
