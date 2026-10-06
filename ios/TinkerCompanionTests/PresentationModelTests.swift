@@ -106,4 +106,16 @@ import XCTest
         XCTAssertEqual(imported.effect.name,"Rain")
         XCTAssertTrue(imported.effect.paused)
     }
+    func testLinkedNoteReminderProjectsWithoutCreatingIndependentTask() throws {
+        var note = Graph.new("note"); var task = Graph.new("task").record
+        task["note_id"] = .string(note.id); task["kind"] = .string("reminder")
+        task["due_at"] = .string("2026-09-27T12:00:00+13:00"); note.linked_task = task
+        let store = try LocalStore(path:location()); try store.edit(note,kind:"note",id:note.id)
+        let interval = DateInterval(start:try Dates.parse("2026-09-26T00:00:00Z"),end:try Dates.parse("2026-09-28T00:00:00Z"))
+        let projected = CalendarProjection.dueTasks(store.records,interval:interval)
+        XCTAssertEqual(projected.count,1); XCTAssertEqual(projected.first?.id,task["id"]?.text)
+        XCTAssertEqual(projected.first?.linkedNoteID,note.id)
+        XCTAssertEqual(store.records.count,1); XCTAssertEqual(store.records.first?.kind,"note")
+        XCTAssertEqual(store.pendingCount,1)
+    }
 }

@@ -44,7 +44,7 @@ struct RootView: View {
                                 ForEach(PhoneRoute.all) { route in
                                     Button { presentation.navigate(route.id); withAnimation { drawer = false } } label: {
                                         HStack { Label(route.title,systemImage:route.icon); Spacer(); if route.id == presentation.destination { Image(systemName:"checkmark") } }
-                                            .frame(maxWidth:.infinity,minHeight:44,alignment:.leading).padding(.horizontal,8)
+                                            .frame(maxWidth:.infinity,minHeight:44,alignment:.leading).padding(.horizontal,8).contentShape(Rectangle())
                                     }.accessibilityIdentifier("route." + route.id)
                                 }
                             }.padding()
@@ -56,6 +56,7 @@ struct RootView: View {
         .safeAreaInset(edge:.bottom) {
             if model.isolated { Text("Preview/test fixture · isolated local data").font(.caption).frame(maxWidth:.infinity).padding(6).background(presentation.theme.color("panel")) }
         }
+        .buttonStyle(PhoneButtonStyle())
         .environmentObject(presentation)
         .tint(presentation.theme.color("accent"))
         .foregroundStyle(presentation.theme.color("text"))

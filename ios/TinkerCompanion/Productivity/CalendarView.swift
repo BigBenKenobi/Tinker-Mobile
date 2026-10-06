@@ -53,7 +53,7 @@ struct CalendarView: View {
         return (result.sorted { $0.start < $1.start },errors)
     }
     private var occurrences: [Occurrence] { expansion.occurrences }
-    private var dueTasks: [Graph] { CalendarProjection.dueTasks(model.store.records,interval:period) }
+    private var dueTasks: [ProjectedDueTask] { CalendarProjection.dueTasks(model.store.records,interval:period) }
 
     var body: some View {
         List {
@@ -110,7 +110,7 @@ struct CalendarView: View {
             Section("Due tasks · projected") {
                 if dueTasks.isEmpty { Text("No tasks due in this period").foregroundStyle(.secondary) }
                 ForEach(dueTasks) { task in
-                    VStack(alignment:.leading) { Text(task.title); Text((try? Dates.parse(task.text("due_at")).formatted()) ?? task.text("due_at")).font(.caption) }
+                    VStack(alignment:.leading) { Text(task.title); Text(task.due.formatted()).font(.caption); if task.linkedNoteID != nil { Label("Linked note reminder",systemImage:"note.text").font(.caption) } }
                 }
                 Text("Tasks remain tasks; this view does not create calendar events.").font(.caption)
             }.phoneSection()

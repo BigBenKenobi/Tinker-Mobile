@@ -70,3 +70,14 @@ struct PhoneSectionStyle: ViewModifier {
 extension View {
     func phoneSection() -> some View { modifier(PhoneSectionStyle()) }
 }
+
+/// Expand the actual label hit region, not just the surrounding layout frame.
+/// Empty HStack spacers must activate their row instead of the drawer backdrop.
+struct PhoneButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.frame(minWidth:44,minHeight:44)
+            .contentShape(Rectangle())
+            .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.45)
+    }
+}

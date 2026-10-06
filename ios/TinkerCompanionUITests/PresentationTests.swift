@@ -23,7 +23,10 @@ import UIKit
         let drawer = app.scrollViews["shell.drawer"]
         XCTAssertTrue(drawer.waitForExistence(timeout:5),"The tools drawer must open")
         let button = app.buttons["route." + route]
-        for _ in 0..<10 where !button.isHittable { drawer.swipeUp() }
+        for _ in 0..<12 where !button.isHittable {
+            if button.exists && button.frame.midY < drawer.frame.minY { drawer.swipeDown(velocity:.slow) }
+            else { drawer.swipeUp(velocity:.slow) }
+        }
         if !button.isHittable {
             print("TINKER_UI_HIERARCHY_BEGIN")
             print(app.debugDescription)
@@ -50,18 +53,28 @@ import UIKit
         attachment.name = "Home-retained-draft"; attachment.lifetime = .keepAlways
         add(attachment)
     }
+    /// Wait for actual window orientation before hitting a relocated toolbar.
+    private func rotate(_ orientation: UIDeviceOrientation,in app: XCUIApplication) {
+        XCUIDevice.shared.orientation = orientation
+        let predicate = NSPredicate { _,_ in
+            let frame = app.windows.firstMatch.frame
+            return orientation == .portrait ? frame.height > frame.width : frame.width > frame.height
+        }
+        let expectation = XCTNSPredicateExpectation(predicate:predicate,object:app)
+        XCTAssertEqual(XCTWaiter.wait(for:[expectation],timeout:5),.completed)
+    }
     /// All canonical destinations must be reachable and produce screenshot evidence.
     func testDestinationScreenshots() {
         let app = launch()
         for route in ["new_chat","search","email","tools","brain","calendar","compare","cookbook","research","gallery","library","notes","tasks","companion","theme","settings","account","model_selector"] {
             navigate(route,in:app)
             for orientation in [UIDeviceOrientation.portrait,.landscapeLeft] {
-                XCUIDevice.shared.orientation = orientation
+                rotate(orientation,in:app)
                 let attachment = XCTAttachment(screenshot:app.screenshot())
                 attachment.name = "Destination-" + route + (orientation == .portrait ? "-portrait" : "-landscape")
                 attachment.lifetime = .keepAlways; add(attachment)
             }
-            XCUIDevice.shared.orientation = .portrait
+            rotate(.portrait,in:app)
         }
     }
     /// Populated/error screenshots are labelled fixtures, never ordinary empty states.
