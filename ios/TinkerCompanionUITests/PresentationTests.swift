@@ -23,6 +23,8 @@ import UIKit
         for _ in 0..<10 where !button.isHittable { app.swipeUp() }
         XCTAssertTrue(button.isHittable,"Unreachable destination: " + route)
         button.tap()
+        let title = ["new_chat":"Tinker","search":"Search","email":"Email","tools":"Tools","brain":"Brain","calendar":"Calendar","compare":"Model Compare","cookbook":"Cookbook","research":"Deep Research","gallery":"Gallery","library":"Library","notes":"Notes","tasks":"Tasks","companion":"Companion","theme":"Theme","settings":"Settings","account":"Account","model_selector":"Models"][route]!
+        XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout:5))
     }
     /// A composer draft must survive destination changes without a domain write.
     func testComposerSurvivesNavigation() {
@@ -61,7 +63,7 @@ import UIKit
             navigate("notes",in:app)
             let attachment = XCTAttachment(screenshot:app.screenshot())
             attachment.name = fixture + "-Notes-accessibility-XXXL"; attachment.lifetime = .keepAlways; add(attachment)
-            if fixture == "populated" { XCTAssertTrue(app.buttons.containing(.staticText,identifier:"Preview note").firstMatch.exists) }
+            if fixture == "populated" { XCTAssertTrue(app.buttons["Preview note"].waitForExistence(timeout:5)) }
             app.terminate()
         }
     }

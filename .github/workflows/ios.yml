@@ -45,6 +45,9 @@ jobs:
           xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/tinker-xcode.log"
           xcode_status=${PIPESTATUS[0]}
           python3 scripts/annotate_xcode_errors.py "$RUNNER_TEMP/tinker-xcode.log"
+          python3 scripts/summarize_xcresult.py /tmp/TinkerCompanion.xcresult "$RUNNER_TEMP/tinker-test-summary.json"
+          summary_status=$?
+          if [ "$xcode_status" -eq 0 ]; then exit "$summary_status"; fi
           exit "$xcode_status"
       - name: Preserve Xcode results
         if: always()
@@ -54,6 +57,7 @@ jobs:
           path: |
             /tmp/TinkerCompanion.xcresult
             ${{ runner.temp }}/tinker-xcode.log
+            ${{ runner.temp }}/tinker-test-summary.json
           retention-days: 3
   unsigned-device-ipa:
     if: github.event_name == 'workflow_dispatch'

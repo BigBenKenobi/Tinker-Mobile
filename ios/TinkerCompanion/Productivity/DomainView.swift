@@ -7,11 +7,12 @@ import UniformTypeIdentifiers
 struct DomainView: View {
     @ObservedObject var model: AppModel
     let kind: String
-    @State private var search = ""
-    @State private var showArchived = false
-    @State private var pinnedOnly = false
-    @State private var layout = "List"
-    @State private var taskSection = "Active"
+    @EnvironmentObject private var presentation: PresentationStore
+    private var search: String { presentation.drafts[kind + ".search"] ?? "" }
+    private var showArchived: Bool { presentation.selections["notes.archived"] == "yes" }
+    private var pinnedOnly: Bool { presentation.selections["notes.pinned"] == "yes" }
+    private var layout: String { presentation.selections["notes.layout"] ?? "List" }
+    private var taskSection: String { presentation.selections["tasks.section"] ?? "Active" }
     @State private var editing: RecordVersion?
     @State private var newItem = false
     @State private var deleting: RecordVersion?
@@ -34,12 +35,12 @@ struct DomainView: View {
             Section { SyncStatus(model:model) }.phoneSection()
             if kind == "note" {
                 Section("View") {
-                    Toggle("Show archived notes",isOn:$showArchived)
-                    Toggle("Pinned only",isOn:$pinnedOnly)
-                    Picker("Layout",selection:$layout) { Text("List").tag("List"); Text("Grid").tag("Grid") }.pickerStyle(.segmented)
+                    Toggle("Show archived notes",isOn:presentation.flag("notes.archived"))
+                    Toggle("Pinned only",isOn:presentation.flag("notes.pinned"))
+                    Picker("Layout",selection:presentation.selection("notes.layout",fallback:"List")) { Text("List").tag("List"); Text("Grid").tag("Grid") }.pickerStyle(.segmented)
                 }.phoneSection()
             } else {
-                Picker("Section",selection:$taskSection) { ForEach(["Active","Completed","Activity"],id:\.self) { Text($0) } }.pickerStyle(.segmented)
+                Picker("Section",selection:presentation.selection("tasks.section",fallback:"Active")) { ForEach(["Active","Completed","Activity"],id:\.self) { Text($0) } }.pickerStyle(.segmented)
             }
             if kind == "task", taskSection == "Activity" {
                 Section("Stored activity") {
@@ -60,7 +61,7 @@ struct DomainView: View {
                                 Text(row.value?.title.isEmpty == false ? row.value!.title : "Untitled").font(.headline)
                                 Text(row.value?.text("body") ?? "").lineLimit(4)
                             }.frame(maxWidth:.infinity,minHeight:100,alignment:.topLeading).padding().background(.quaternary,in:RoundedRectangle(cornerRadius:12))
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).accessibilityLabel(row.value?.title.isEmpty == false ? row.value!.title : "Untitled").accessibilityIdentifier("record." + row.id)
                     }
                 }
             } else {
@@ -76,14 +77,15 @@ struct DomainView: View {
                         if kind == "task" { Text(row.value!.text("status").replacingOccurrences(of:"_",with:" ") + (row.value!.text("due_at").isEmpty ? "" : " · " + ((try? Dates.parse(row.value!.text("due_at")).formatted()) ?? row.value!.text("due_at")))).font(.caption) }
                         if !row.value!.reminders.isEmpty { Label("\(row.value!.reminders.count) reminders",systemImage:"bell").font(.caption) }
                     }.foregroundStyle(.primary)
-                }.swipeActions {
+                }.accessibilityLabel(row.value?.title.isEmpty == false ? row.value!.title : "Untitled").accessibilityIdentifier("record." + row.id)
+                .swipeActions {
                     Button("Delete",role:.destructive) { deleting = row }
                     if kind == "task" { Button("Complete") { complete(row) }.tint(.green) }
                 }
             }
             }
         }.navigationTitle(kind == "note" ? "Notes" : "Tasks")
-        .searchable(text:$search).refreshable { await model.sync() }
+        .searchable(text:presentation.draft(kind + ".search")).refreshable { await model.sync() }
         .toolbar { Button { newItem = true } label: { Label("Create",systemImage:"plus") } }
         .sheet(item:$editing) { row in NavigationStack { GraphEditor(model:model,graph:row.value!,revision:row.revision) } }
         .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:Graph.new(kind),revision:0) } }

@@ -55,6 +55,7 @@ struct PhoneRoute: Identifiable {
     @Published var opaquePresentation = false
     @Published var composer = ""
     @Published var chatMode = "Chat"
+    @Published var colorDrafts: [String:String] = [:]
     @Published var drafts: [String:String] = [:]
     @Published var selections: [String:String] = [:]
     @Published var theme = ThemeBundle.presets["forest"]!
@@ -64,6 +65,7 @@ struct PhoneRoute: Identifiable {
     /// Restore validated durable preferences; corrupt state is reported, never reset.
     init(store: LocalStore) {
         self.store = store
+        selections["calendar.day"] = Dates.stamp(Date())
         do {
             if let value = try store.presentationValue("destination"), PhoneRoute.all.contains(where:{ $0.id == value }) { destination = value }
             if let value = try store.presentationValue("theme") {
@@ -99,6 +101,16 @@ struct PhoneRoute: Identifiable {
     }
     /// Bind a process-local field; there is deliberately no durable workspace record.
     func draft(_ key: String) -> Binding<String> { Binding(get:{ self.drafts[key] ?? "" },set:{ self.drafts[key] = $0 }) }
+    /// Retain temporary switches as explicit values; no preference/domain write.
+    func flag(_ key: String) -> Binding<Bool> {
+        Binding(get:{ self.selections[key] == "yes" },set:{ self.selections[key] = $0 ? "yes" : "no" })
+    }
+    func date(_ key: String) -> Binding<Date> {
+        Binding(get:{ (try? Dates.parse(self.selections[key] ?? "")) ?? Date() },set:{ self.selections[key] = Dates.stamp($0) })
+    }
+    func number(_ key: String, fallback: Double) -> Binding<Double> {
+        Binding(get:{ Double(self.selections[key] ?? "") ?? fallback },set:{ self.selections[key] = String($0) })
+    }
     /// Bind a retained screen selection without changing synchronized records.
     func selection(_ key: String, fallback: String) -> Binding<String> { Binding(get:{ self.selections[key] ?? fallback },set:{ self.selections[key] = $0 }) }
 }

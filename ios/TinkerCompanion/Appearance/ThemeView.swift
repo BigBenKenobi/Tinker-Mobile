@@ -19,9 +19,12 @@ struct ThemeView: View {
     @State private var importing = false
     @State private var exporting = false
     @State private var document: ThemeFile?
-    @State private var name = ""
+    private var name: String { presentation.drafts["theme.name"] ?? "" }
     @State private var duplicate: ThemeBundle?
-    @State private var colorDrafts: [String:String] = [:]
+    private var colorDrafts: [String:String] {
+        get { presentation.colorDrafts }
+        nonmutating set { presentation.colorDrafts = newValue }
+    }
     var body: some View {
         Form {
             Section("Desktop palettes") {
@@ -37,7 +40,7 @@ struct ThemeView: View {
                         TextField(role,text:Binding(get:{ colorDrafts[role] ?? presentation.theme.palette[role] ?? "" },set:{ colorDrafts[role] = $0 }))
                             .textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityLabel(role + " hex color")
                         Button("Apply") {
-                            var next = presentation.theme; next.palette[role] = colorDrafts[role]; presentation.apply(next)
+                            var next = presentation.theme; next.palette[role] = colorDrafts[role] ?? next.palette[role]; presentation.apply(next)
                         }.frame(minHeight:44)
                     }
                 }
@@ -65,9 +68,9 @@ struct ThemeView: View {
                 Text("Phone target: 30 FPS. Reduce Motion, Low Power Mode and inactive scenes use a static presentation.").font(.caption)
             }.phoneSection()
             Section("Named themes and Files") {
-                TextField("Theme name",text:$name)
+                TextField("Theme name",text:presentation.draft("theme.name"))
                 Button("Save named theme") { var next = presentation.theme; next.name = name; save(next) }
-                ForEach(presentation.savedThemes.keys.sorted(),id:\.self) { key in Button(key) { if let bundle = presentation.savedThemes[key] { presentation.apply(bundle) } } }
+                ForEach(presentation.savedThemes.keys.sorted(),id:\.self) { key in Button(key) { if let bundle = presentation.savedThemes[key] { presentation.apply(bundle); colorDrafts = [:] } } }
                 Button("Import theme") { importing = true }
                 Button("Export current theme") {
                     do { document = try ThemeFile(bundle:presentation.theme); exporting = true } catch { presentation.error = error.localizedDescription }

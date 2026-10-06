@@ -10,7 +10,7 @@ struct GalleryWorkspace: View {
             Panel(title:"Collections") {
                 Picker("Collection",selection:presentation.selection("gallery.tab",fallback:"Photos")) { Text("Photos").tag("Photos"); Text("Albums").tag("Albums") }.pickerStyle(.segmented)
                 TextField("Search photos and albums",text:presentation.draft("gallery.search"))
-                WorkspaceEmpty(title:"No gallery items",icon:"photo.on.rectangle",reason:"Gallery storage is unavailable.")
+                WorkspaceEmpty(title:presentation.selections["gallery.tab"] == "Albums" ? "No albums" : "No photos",icon:"photo.on.rectangle",reason:"Gallery storage is unavailable.")
                 Button("Preview editor layout") { editor = true }.frame(minHeight:44)
                 UnavailableAction(title:"Import photo · Create album",reason:"Durable Gallery operations are unavailable.")
             }
@@ -21,6 +21,13 @@ struct GalleryWorkspace: View {
                     Panel(title:"Tools") {
                         Picker("Tool preview",selection:presentation.selection("gallery.tool",fallback:"Select")) { ForEach(["Select","Crop","Draw","Erase","Inpaint"],id:\.self) { Text($0) } }
                         TextField("Inpaint prompt",text:presentation.draft("gallery.inpaint"))
+                        if presentation.selections["gallery.tool"] == "Crop" {
+                            Picker("Aspect ratio preview",selection:presentation.selection("gallery.aspect",fallback:"Free")) { ForEach(["Free","1:1","4:3","16:9"],id:\.self) { Text($0) } }
+                        } else if presentation.selections["gallery.tool"] == "Draw" || presentation.selections["gallery.tool"] == "Erase" {
+                            TextField("Brush size preview",text:presentation.draft("gallery.brush")).keyboardType(.numberPad)
+                        } else if presentation.selections["gallery.tool"] == "Inpaint" {
+                            Text("Mask and generated replacement preview require a loaded image.").font(.caption)
+                        }
                         UnavailableAction(title:"Apply edit · Run inpaint",reason:"Image processing and durable editing are unavailable.")
                     }
                     DisclosureGroup("Layers") { Text("No layers exist without an image."); UnavailableAction(title:"Add layer",reason:"Layer storage is unavailable.") }
@@ -39,7 +46,7 @@ struct LibraryWorkspace: View {
             Panel(title:"Library") {
                 Picker("Collection",selection:presentation.selection("library.tab",fallback:"Chats")) { ForEach(["Chats","Documents","Research","Archive"],id:\.self) { Text($0) } }
                 TextField("Search library",text:presentation.draft("library.search"))
-                WorkspaceEmpty(title:"No library records",icon:"books.vertical",reason:"Conversation, document and report storage are unavailable.")
+                WorkspaceEmpty(title:"No " + (presentation.selections["library.tab"] ?? "Chats").lowercased(),icon:"books.vertical",reason:"Conversation, document and report storage are unavailable.")
                 Button("Preview detail layout") { detail = true }.frame(minHeight:44)
             }
         }.sheet(isPresented:$detail) {

@@ -6,7 +6,7 @@ import SwiftUI
 struct ServiceSettingsView: View {
     @EnvironmentObject private var presentation: PresentationStore
     let section: String
-    @State private var temperature = 0.7
+    private var temperature: Double { Double(presentation.selections["settings.temperature"] ?? "") ?? 0.7 }
     var body: some View {
         Form {
             Section { Text("Layout preview · these temporary fields clear on restart.").font(.caption) }.phoneSection()
@@ -22,7 +22,7 @@ struct ServiceSettingsView: View {
             case "AI defaults":
                 Section("Generation preview") {
                     Text("Temperature preview: " + String(format:"%.1f",temperature))
-                    Slider(value:$temperature,in:0...2).accessibilityLabel("Temperature preview")
+                    Slider(value:presentation.number("settings.temperature",fallback:0.7),in:0...2).accessibilityLabel("Temperature preview")
                     TextField("System instruction preview",text:presentation.draft("settings.ai.system"))
                     UnavailableAction(title:"Default model · Apply defaults",reason:"No model registry or generation runtime is available.")
                 }.phoneSection()

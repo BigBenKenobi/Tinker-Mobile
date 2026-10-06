@@ -1,6 +1,6 @@
 // Native phone shell consumes canonical desktop route IDs in desktop order.
 // One presentation owner retains temporary drafts and appearance across tools;
-// mounted navigation stacks retain selection and editors without storing records.
+// a single active stack avoids hidden navigation controllers during rotation.
 import SwiftUI
 
 struct RootView: View {
@@ -15,32 +15,24 @@ struct RootView: View {
     var body: some View {
         ZStack {
             BackgroundView(theme:presentation.theme,visible:!drawer && !presentation.opaquePresentation && ["new_chat","theme"].contains(presentation.destination))
-            ZStack {
-                ForEach(PhoneRoute.all) { route in
-                    NavigationStack {
-                        destination(route.destination)
-                            .scrollContentBackground(.hidden)
-                            .background(presentation.theme.color("background").opacity(["new_chat","theme"].contains(route.id) ? 0 : 1))
-                            .toolbar {
-                                ToolbarItem(placement:.topBarLeading) {
-                                    Button { withAnimation { drawer.toggle() } } label: { Label("Tools",systemImage:"line.3.horizontal") }
-                                        .accessibilityIdentifier("shell.tools").frame(minWidth:44,minHeight:44)
-                                }
-                                ToolbarItem(placement:.topBarTrailing) {
-                                    Button { presentation.navigate("companion") } label: {
-                                        Image(systemName:model.syncing ? "arrow.triangle.2.circlepath" : "iphone.and.arrow.forward")
-                                    }.accessibilityLabel("Companion: " + model.connection).frame(minWidth:44,minHeight:44)
-                                }
-                            }
-                            .toolbarBackground(presentation.theme.color("panel"),for:.navigationBar)
-                            .toolbarBackground(.visible,for:.navigationBar)
+            NavigationStack {
+                destination(PhoneDestination(rawValue:presentation.destination) ?? .home)
+                    .scrollContentBackground(.hidden)
+                    .background(presentation.theme.color("background").opacity(["new_chat","theme"].contains(presentation.destination) ? 0 : 1))
+                    .toolbar {
+                        ToolbarItem(placement:.topBarLeading) {
+                            Button { withAnimation { drawer.toggle() } } label: { Label("Tools",systemImage:"line.3.horizontal") }
+                                .accessibilityIdentifier("shell.tools").frame(minWidth:44,minHeight:44)
+                        }
+                        ToolbarItem(placement:.topBarTrailing) {
+                            Button { presentation.navigate("companion") } label: {
+                                Image(systemName:model.syncing ? "arrow.triangle.2.circlepath" : "iphone.and.arrow.forward")
+                            }.accessibilityLabel("Companion: " + model.connection).frame(minWidth:44,minHeight:44)
+                        }
                     }
-                    .opacity(presentation.destination == route.id ? 1 : 0)
-                    .allowsHitTesting(presentation.destination == route.id)
-                    .accessibilityHidden(presentation.destination != route.id)
-                    .zIndex(presentation.destination == route.id ? 1 : 0)
-                }
-            }
+                    .toolbarBackground(presentation.theme.color("panel"),for:.navigationBar)
+                    .toolbarBackground(.visible,for:.navigationBar)
+            }.id(presentation.destination)
             if drawer {
                 GeometryReader { geometry in
                     ZStack(alignment:.leading) {

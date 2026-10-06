@@ -17,9 +17,13 @@ struct CalendarFile: FileDocument {
 
 struct CalendarView: View {
     @ObservedObject var model: AppModel
-    @State private var selectedDay = Date()
-    @State private var search = ""
-    @State private var mode = "Month"
+    @EnvironmentObject private var presentation: PresentationStore
+    private var selectedDay: Date {
+        get { (try? Dates.parse(presentation.selections["calendar.day"] ?? "")) ?? Date() }
+        nonmutating set { presentation.selections["calendar.day"] = Dates.stamp(newValue) }
+    }
+    private var search: String { presentation.drafts["calendar.search"] ?? "" }
+    private var mode: String { presentation.selections["calendar.mode"] ?? "Month" }
     @State private var editing: RecordVersion?
     @State private var newItem = false
     @State private var importing = false
@@ -69,7 +73,7 @@ struct CalendarView: View {
                 Button("Add calendar") { newCalendar = true }
             }.phoneSection()
             Section("Presentation") {
-                Picker("Period",selection:$mode) { ForEach(["Month","Week","Day"],id:\.self) { Text($0) } }.pickerStyle(.segmented)
+                Picker("Period",selection:presentation.selection("calendar.mode",fallback:"Month")) { ForEach(["Month","Week","Day"],id:\.self) { Text($0) } }.pickerStyle(.segmented)
                 if mode == "Month" {
                     Text(selectedDay.formatted(.dateTime.month(.wide).year())).font(.headline)
                     LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:2),count:7),spacing:6) {
@@ -93,7 +97,7 @@ struct CalendarView: View {
                             Button { selectedDay = day } label: { VStack { Text(day.formatted(.dateTime.weekday(.abbreviated))); Text(day.formatted(.dateTime.day())) }.frame(minWidth:44,minHeight:44) }
                         }
                     }
-                } else { DatePicker("Selected day",selection:$selectedDay,displayedComponents:.date) }
+                } else { DatePicker("Selected day",selection:presentation.date("calendar.day"),displayedComponents:.date) }
                 HStack {
                     Button("Previous") { shift(-1) }.frame(minHeight:44)
                     Spacer()
@@ -124,7 +128,7 @@ struct CalendarView: View {
                     }
                 }
             }.phoneSection()
-        }.navigationTitle("Calendar").searchable(text:$search).refreshable { await model.sync() }
+        }.navigationTitle("Calendar").searchable(text:presentation.draft("calendar.search")).refreshable { await model.sync() }
         .toolbar {
             Button { if calendars.isEmpty { newCalendar = true } else { newItem = true } } label: { Label("New event",systemImage:"plus") }
             Menu {

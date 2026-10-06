@@ -27,7 +27,7 @@ struct EmailWorkspace: View {
                 Toggle("Unread only",isOn:Binding(get:{ presentation.selections["email.unread"] == "yes" },set:{ presentation.selections["email.unread"] = $0 ? "yes" : "no" }))
                 HStack { Button("Compose") { composing = true }.frame(minHeight:44); Spacer(); Button("Accounts") { accounts = true }.frame(minHeight:44) }
             }
-            Panel(title:"Messages") { WorkspaceEmpty(title:"No connected mailbox",icon:"tray",reason:"Email accounts and message storage are unavailable. Compose is a temporary draft only.") }
+            Panel(title:"Messages") { WorkspaceEmpty(title:"No messages in " + (presentation.selections["email.mailbox"] ?? "Inbox"),icon:"tray",reason:"Email accounts and message storage are unavailable. Compose is a temporary draft only.") }
             DisclosureGroup("Message detail layout") {
                 Panel(title:"Message") { Text("From · To · Subject").font(.caption); Text("Message body appears here when mail support is available."); UnavailableAction(title:"Reply",reason:"No message is available to reply to.") }
             }

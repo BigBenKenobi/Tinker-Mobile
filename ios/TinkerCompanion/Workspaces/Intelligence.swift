@@ -11,7 +11,7 @@ struct BrainWorkspace: View {
                 Picker("Collection",selection:presentation.selection("brain.tab",fallback:"Memories")) { Text("Memories").tag("Memories"); Text("Skills").tag("Skills") }.pickerStyle(.segmented)
                 TextField("Search knowledge",text:presentation.draft("brain.search"))
                 Button("Preview add form") { adding = true }.frame(minHeight:44)
-                WorkspaceEmpty(title:"No stored knowledge",icon:"brain",reason:"Memory and skill persistence is unavailable on iPhone.")
+                WorkspaceEmpty(title:presentation.selections["brain.tab"] == "Skills" ? "No stored skills" : "No stored memories",icon:presentation.selections["brain.tab"] == "Skills" ? "bolt" : "brain",reason:"Memory and skill persistence is unavailable on iPhone.")
             }
             Panel(title:"Knowledge exchange") { UnavailableAction(title:"Import · Export knowledge",reason:"Memory and skill storage and exchange are unavailable on iPhone.") }
             DisclosureGroup("Automation preferences") {
@@ -24,6 +24,10 @@ struct BrainWorkspace: View {
                         TextField("Title",text:presentation.draft("brain.title"))
                         TextEditor(text:presentation.draft("brain.body")).frame(minHeight:160).accessibilityLabel("Knowledge content")
                         TextField("Tags",text:presentation.draft("brain.tags"))
+                        if presentation.selections["brain.tab"] == "Skills" {
+                            TextField("Activation trigger preview",text:presentation.draft("brain.trigger"))
+                            Text("Skill instructions are a temporary draft only.").font(.caption)
+                        }
                         Picker("Confidence preview",selection:presentation.selection("brain.confidence",fallback:"Unverified")) { ForEach(["Unverified","Low","Medium","High"],id:\.self) { Text($0) } }
                     }.phoneSection()
                     Section { UnavailableAction(title:"Save knowledge",reason:"Knowledge storage is unavailable. Fields clear on restart.") }.phoneSection()
@@ -58,9 +62,21 @@ struct CookbookWorkspace: View {
                 Picker("View",selection:presentation.selection("cookbook.tab",fallback:"Models")) { ForEach(["Models","Dependencies","Settings"],id:\.self) { Text($0) } }.pickerStyle(.segmented)
                 WorkspaceEmpty(title:"No cached models",icon:"externaldrive",reason:"The phone does not host the desktop model cache.")
             }
-            Panel(title:"Model controls") { ForEach(["Launch","Download","Remove"],id:\.self) { UnavailableAction(title:$0,reason:"Desktop model/package management is unavailable on iPhone.") } }
-            DisclosureGroup("Dependencies") { Text("Runtime, backend and package status require a desktop model service.") }
-            DisclosureGroup("Settings") { Text("Cache folder, device selection and runtime arguments are desktop-only.") }
+            if (presentation.selections["cookbook.tab"] ?? "Models") == "Models" {
+                Panel(title:"Model controls") { ForEach(["Launch","Download","Remove"],id:\.self) { UnavailableAction(title:$0,reason:"Desktop model/package management is unavailable on iPhone.") } }
+            } else if presentation.selections["cookbook.tab"] == "Dependencies" {
+                Panel(title:"Dependencies") {
+                    Text("Runtime · Backend · Packages").font(.headline)
+                    Text("No runtime/package status is available.")
+                    UnavailableAction(title:"Install dependencies",reason:"Model backends are managed on the desktop.")
+                }
+            } else {
+                Panel(title:"Cache settings") {
+                    Text("Cache folder and device selection are desktop-only.")
+                    TextField("Runtime arguments preview",text:presentation.draft("cookbook.arguments"))
+                    UnavailableAction(title:"Apply runtime settings",reason:"There is no phone model runtime.")
+                }
+            }
         }
     }
 }
