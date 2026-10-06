@@ -1,7 +1,6 @@
-// Native iPhone Notes, Tasks, Calendar, conflicts and pairing presentation.
-// Screens observe AppModel's SQLite state. Editors hold independent graph drafts
-// and close only after successful local commits; network availability never gates
-// ordinary editing. Files/QR/notification permissions are requested in context.
+// Sheet editors own copied domain graphs and commit through AppModel only.
+// Failed saves keep drafts; the main editor requires explicit unsaved discard.
+// Reminder/exception children remain part of their atomic parent graph.
 import SwiftUI
 import UniformTypeIdentifiers
 

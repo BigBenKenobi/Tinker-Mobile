@@ -1,7 +1,6 @@
-// Native iPhone Notes, Tasks, Calendar, conflicts and pairing presentation.
-// Screens observe AppModel's SQLite state. Editors hold independent graph drafts
-// and close only after successful local commits; network availability never gates
-// ordinary editing. Files/QR/notification permissions are requested in context.
+// Shared read-only sync summary observes AppModel and its local store.
+// Status, pending edits, conflicts and errors remain visible while offline;
+// rendering this component never starts sync or writes a domain graph.
 import SwiftUI
 import UniformTypeIdentifiers
 

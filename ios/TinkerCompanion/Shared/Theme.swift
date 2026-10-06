@@ -74,7 +74,11 @@ struct ThemeBundle: Codable, Equatable {
     }
     var isLight: Bool {
         let value = UInt32((palette["background"] ?? "#000000").dropFirst(),radix:16) ?? 0
-        return Double((value >> 16) & 255) * 0.2126 + Double((value >> 8) & 255) * 0.7152 + Double(value & 255) * 0.0722 > 128
+        let red: Double = Double((value >> 16) & 255)
+        let green: Double = Double((value >> 8) & 255)
+        let blue: Double = Double(value & 255)
+        let brightness: Double = red * 0.2126 + green * 0.7152 + blue * 0.0722
+        return brightness > 128
     }
     var fontDesign: Font.Design { typography.font == "Monospace" ? .monospaced : typography.font == "Serif" ? .serif : .default }
     var spacing: CGFloat { typography.density == "Compact" ? 8 : typography.density == "Roomy" ? 20 : 14 }

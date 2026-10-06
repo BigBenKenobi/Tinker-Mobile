@@ -1,7 +1,6 @@
-// Native iPhone Notes, Tasks, Calendar, conflicts and pairing presentation.
-// Screens observe AppModel's SQLite state. Editors hold independent graph drafts
-// and close only after successful local commits; network availability never gates
-// ordinary editing. Files/QR/notification permissions are requested in context.
+// Companion status, pairing and conflict comparison over existing AppModel v2.
+// User actions delegate to services; pending edits and both conflict versions
+// remain visible. Presentation never runs SQL or changes credential ownership.
 import SwiftUI
 import UniformTypeIdentifiers
 

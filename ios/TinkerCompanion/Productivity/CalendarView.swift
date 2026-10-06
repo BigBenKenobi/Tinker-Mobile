@@ -1,7 +1,6 @@
-// Native iPhone Notes, Tasks, Calendar, conflicts and pairing presentation.
-// Screens observe AppModel's SQLite state. Editors hold independent graph drafts
-// and close only after successful local commits; network availability never gates
-// ordinary editing. Files/QR/notification permissions are requested in context.
+// Calendar month/week/day and Files ICS presentation over AppModel local data.
+// CalendarProjection bounds date expansion; visibility filters events and due
+// tasks remain read-only projections. Editors delegate atomic saves to AppModel.
 import SwiftUI
 import UniformTypeIdentifiers
 

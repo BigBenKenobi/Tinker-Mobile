@@ -97,6 +97,8 @@ struct PhoneRoute: Identifiable {
         try store.savePresentationValue("savedThemes",value:String(decoding:JSONEncoder().encode(next),as:UTF8.self))
         savedThemes = next
     }
+    /// Bind a process-local field; there is deliberately no durable workspace record.
     func draft(_ key: String) -> Binding<String> { Binding(get:{ self.drafts[key] ?? "" },set:{ self.drafts[key] = $0 }) }
+    /// Bind a retained screen selection without changing synchronized records.
     func selection(_ key: String, fallback: String) -> Binding<String> { Binding(get:{ self.selections[key] ?? fallback },set:{ self.selections[key] = $0 }) }
 }

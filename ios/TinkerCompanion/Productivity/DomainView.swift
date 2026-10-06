@@ -1,7 +1,6 @@
-// Native iPhone Notes, Tasks, Calendar, conflicts and pairing presentation.
-// Screens observe AppModel's SQLite state. Editors hold independent graph drafts
-// and close only after successful local commits; network availability never gates
-// ordinary editing. Files/QR/notification permissions are requested in context.
+// Notes/Tasks presentation observes AppModel local graphs. Search, filters and
+// layout stay in the mounted destination; sheet editors own independent drafts.
+// CRUD delegates to the existing store coordinator and remains available offline.
 import SwiftUI
 import UniformTypeIdentifiers
 
