@@ -40,13 +40,20 @@ jobs:
         run: python3 -m unittest discover -s scripts/tests -v
       - name: Build and test native iPhone app
         run: |
-          xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test
+          set +e
+          set -o pipefail
+          xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/tinker-xcode.log"
+          xcode_status=${PIPESTATUS[0]}
+          python3 scripts/annotate_xcode_errors.py "$RUNNER_TEMP/tinker-xcode.log"
+          exit "$xcode_status"
       - name: Preserve Xcode results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xcode-results-${{ matrix.phone }}
-          path: /tmp/TinkerCompanion.xcresult
+          path: |
+            /tmp/TinkerCompanion.xcresult
+            ${{ runner.temp }}/tinker-xcode.log
           retention-days: 3
   unsigned-device-ipa:
     if: github.event_name == 'workflow_dispatch'

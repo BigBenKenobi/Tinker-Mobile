@@ -3,6 +3,14 @@
 // networking, notifications or production SQLite. Normal launches remain empty.
 import Foundation
 
+enum LaunchConfiguration {
+    /// XCTest host launches also isolate app startup, not just explicit UI runs.
+    static var isolated: Bool {
+        ProcessInfo.processInfo.arguments.contains("--ui-testing") ||
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+}
+
 @MainActor enum LaunchFixture {
     static func seed(_ model: AppModel, name: String) throws {
         guard model.isolated else { throw CompanionError("Fixtures require isolated launch mode") }

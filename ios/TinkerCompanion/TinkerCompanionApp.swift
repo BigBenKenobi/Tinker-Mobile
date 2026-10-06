@@ -34,7 +34,7 @@ import UIKit
             let root = try FileManager.default.url(for:.applicationSupportDirectory,in:.userDomainMask,appropriateFor:nil,create:true)
             // A launch token owns a separate disposable store; production data and
             // Keychain remain untouched even when an isolated test launch fails.
-            let isolated = ProcessInfo.processInfo.arguments.contains("--ui-testing")
+            let isolated = LaunchConfiguration.isolated
             let token = ProcessInfo.processInfo.environment["TINKER_TEST_RUN"] ?? UUID().uuidString
             guard !isolated || UUID(uuidString:token) != nil else { throw CompanionError("Invalid UI test run identifier") }
             let path = isolated ? FileManager.default.temporaryDirectory.appendingPathComponent("TinkerUITests/" + token + "/companion.sqlite3") : root.appendingPathComponent("Tinker/companion.sqlite3")
@@ -52,7 +52,7 @@ import UIKit
     static weak var model: AppModel?
     static let refreshID = "com.bigbenkenobi.tinker.refresh"
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey:Any]? = nil) -> Bool {
-        guard !ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return true }
+        guard !LaunchConfiguration.isolated else { return true }
         BGTaskScheduler.shared.register(forTaskWithIdentifier:Self.refreshID,using:nil) { task in
             guard let refresh = task as? BGAppRefreshTask else { task.setTaskCompleted(success:false); return }
             let operation = Task { @MainActor in

@@ -93,4 +93,17 @@ import XCTest
         XCTAssertEqual(decoded.effect.name,"Solid")
         XCTAssertEqual(decoded.effect.color,palette["accent"])
     }
+    func testActualDesktopBundlePreservesAllInterchangeFields() throws {
+        let url = try XCTUnwrap(Bundle(for:Self.self).url(forResource:"theme-v1",withExtension:"json"))
+        let source = try Data(contentsOf:url)
+        let imported = try JSONDecoder().decode(ThemeBundle.self,from:source)
+        try imported.validate()
+        let exported = try JSONEncoder().encode(imported)
+        let original = try JSONSerialization.jsonObject(with:source) as? NSDictionary
+        let roundTrip = try JSONSerialization.jsonObject(with:exported) as? NSDictionary
+        XCTAssertEqual(original,roundTrip)
+        XCTAssertEqual(imported.typography.font,"Serif")
+        XCTAssertEqual(imported.effect.name,"Rain")
+        XCTAssertTrue(imported.effect.paused)
+    }
 }

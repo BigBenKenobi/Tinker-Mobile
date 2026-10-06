@@ -1,0 +1,30 @@
+{
+  "effect": {
+    "color": "#58bbef",
+    "intensity": 1.4,
+    "name": "Rain",
+    "paused": true,
+    "quality": 1.5,
+    "size": 0.7,
+    "speed": 0.75
+  },
+  "name": "Desktop interoperability fixture",
+  "palette": {
+    "accent": "#58bbef",
+    "background": "#0e2230",
+    "border": "#1c617a",
+    "input_bg": "#0b1b25",
+    "muted": "#3a748d",
+    "panel": "#0d1d29",
+    "send_bg": "#1c5670",
+    "sidebar": "#0b1721",
+    "text": "#5ec8f7"
+  },
+  "typography": {
+    "density": "Roomy",
+    "font": "Serif",
+    "frosted": true,
+    "text_size": "Large"
+  },
+  "version": 1
+}

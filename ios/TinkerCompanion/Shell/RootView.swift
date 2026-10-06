@@ -20,7 +20,7 @@ struct RootView: View {
                     NavigationStack {
                         destination(route.destination)
                             .scrollContentBackground(.hidden)
-                            .background(presentation.theme.color("background").opacity(route.id == "new_chat" ? 0 : 1))
+                            .background(presentation.theme.color("background").opacity(["new_chat","theme"].contains(route.id) ? 0 : 1))
                             .toolbar {
                                 ToolbarItem(placement:.topBarLeading) {
                                     Button { withAnimation { drawer.toggle() } } label: { Label("Tools",systemImage:"line.3.horizontal") }
