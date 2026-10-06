@@ -22,7 +22,7 @@ struct BrainWorkspace: View {
                 Form {
                     Section("Temporary knowledge draft") {
                         TextField("Title",text:presentation.draft("brain.title"))
-                        TextEditor(text:presentation.draft("brain.body")).frame(minHeight:160).accessibilityLabel("Knowledge content")
+                        TextEditor(text:presentation.draft("brain.body")).frame(minHeight:160).accessibilityLabel("Knowledge content").phoneInput()
                         TextField("Tags",text:presentation.draft("brain.tags"))
                         if presentation.selections["brain.tab"] == "Skills" {
                             TextField("Activation trigger preview",text:presentation.draft("brain.trigger"))
@@ -42,7 +42,7 @@ struct CompareWorkspace: View {
         WorkspaceLayout(title:"Model Compare") {
             Panel(title:"Comparison setup") {
                 Picker("Mode",selection:presentation.selection("compare.mode",fallback:"Parallel")) { Text("Parallel").tag("Parallel"); Text("Blind").tag("Blind") }.pickerStyle(.segmented)
-                TextEditor(text:presentation.draft("compare.prompt")).frame(minHeight:120).accessibilityLabel("Comparison prompt")
+                TextEditor(text:presentation.draft("compare.prompt")).frame(minHeight:120).accessibilityLabel("Comparison prompt").phoneInput()
                 ForEach(["A","B"],id:\.self) { slot in DisclosureGroup("Model " + slot) { Text("No model is available"); UnavailableAction(title:"Select model " + slot,reason:"Model services are unavailable.") } }
                 UnavailableAction(title:"Run comparison",reason:"Comparison jobs and model execution are unavailable.")
             }
@@ -86,7 +86,7 @@ struct ResearchWorkspace: View {
         WorkspaceLayout(title:"Deep Research") {
             Panel(title:"Research setup") {
                 TextField("Research topic",text:presentation.draft("research.topic"))
-                TextEditor(text:presentation.draft("research.instructions")).frame(minHeight:110).accessibilityLabel("Research instructions")
+                TextEditor(text:presentation.draft("research.instructions")).frame(minHeight:110).accessibilityLabel("Research instructions").phoneInput()
                 Picker("Rounds preview",selection:presentation.selection("research.rounds",fallback:"3")) { ForEach(["1","3","5"],id:\.self) { Text($0) } }
                 Picker("Report format",selection:presentation.selection("research.format",fallback:"Summary")) { ForEach(["Summary","Detailed","Sources"],id:\.self) { Text($0) } }
                 UnavailableAction(title:"Provider / model",reason:"No research provider or model is connected.")

@@ -34,7 +34,7 @@ struct GraphEditor: View {
                     Toggle("Visible",isOn:flag("visible"))
                 } else {
                     TextField("Title",text:text("title"))
-                    TextEditor(text:text(graph.kind == "note" ? "body" : "description")).frame(minHeight:150).accessibilityLabel("Text")
+                    TextEditor(text:text(graph.kind == "note" ? "body" : "description")).frame(minHeight:150).accessibilityLabel("Text").phoneInput()
                 }
             }.phoneSection()
             if graph.kind == "note" {

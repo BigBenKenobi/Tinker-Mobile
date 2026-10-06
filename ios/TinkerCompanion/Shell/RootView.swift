@@ -57,9 +57,10 @@ struct RootView: View {
             if model.isolated { Text("Preview/test fixture · isolated local data").font(.caption).lineLimit(1).minimumScaleFactor(0.5).frame(maxWidth:.infinity).padding(6).background(presentation.theme.color("panel")).accessibilityIdentifier("fixture.banner") }
         }
         .buttonStyle(PhoneButtonStyle())
+        .textFieldStyle(PhoneTextFieldStyle())
         .environmentObject(presentation)
         .tint(presentation.theme.color("accent"))
-        .foregroundStyle(presentation.theme.color("text"))
+        .foregroundStyle(presentation.theme.color("text"),presentation.theme.color("muted"))
         .font(.system(size:bodySize * (presentation.theme.typography.text_size == "Small" ? 0.9 : presentation.theme.typography.text_size == "Large" ? 1.15 : 1),design:presentation.theme.fontDesign))
         .fontDesign(presentation.theme.fontDesign)
         .environment(\.defaultMinListRowHeight,44)

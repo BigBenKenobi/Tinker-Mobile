@@ -15,7 +15,7 @@ struct HomeView: View {
                 Button("Nobody") { sheet = "Nobody" }.frame(minHeight:44)
             }.frame(maxWidth:.infinity).padding(.vertical,32)
             Panel(title:"What are you thinking?") {
-                TextEditor(text:$presentation.composer).focused($composerFocused).frame(minHeight:140).scrollContentBackground(.hidden)
+                TextEditor(text:$presentation.composer).focused($composerFocused).frame(minHeight:140).scrollContentBackground(.hidden).phoneInput()
                     .accessibilityLabel("Temporary composer draft").accessibilityIdentifier("home.composer")
                 Picker("Mode",selection:$presentation.chatMode) { Text("Chat").tag("Chat"); Text("Agent").tag("Agent") }.pickerStyle(.segmented)
                 HStack {

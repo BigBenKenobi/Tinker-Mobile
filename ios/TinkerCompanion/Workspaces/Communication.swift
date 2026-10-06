@@ -37,7 +37,7 @@ struct EmailWorkspace: View {
                     Section("Temporary draft") {
                         TextField("To",text:presentation.draft("email.to")).keyboardType(.emailAddress).textInputAutocapitalization(.never)
                         TextField("Subject",text:presentation.draft("email.subject"))
-                        TextEditor(text:presentation.draft("email.body")).frame(minHeight:160).accessibilityLabel("Email body")
+                        TextEditor(text:presentation.draft("email.body")).frame(minHeight:160).accessibilityLabel("Email body").phoneInput()
                     }.phoneSection()
                     Section { UnavailableAction(title:"Send email",icon:"paperplane",reason:"No mail service or durable email storage is available. Draft clears on restart.") }.phoneSection()
                 }.navigationTitle("Compose").toolbar { Button("Done") { composing = false } }
@@ -66,7 +66,7 @@ struct ToolsWorkspace: View {
             Panel(title:"Prompt Studio") {
                 Picker("Prompt mode",selection:presentation.selection("prompt.mode",fallback:"Inject")) { ForEach(["Inject","Persona","Group"],id:\.self) { Text($0) } }.pickerStyle(.segmented)
                 TextField("Name",text:presentation.draft("prompt.name"))
-                TextEditor(text:presentation.draft("prompt.body")).frame(minHeight:140).accessibilityLabel("Prompt draft")
+                TextEditor(text:presentation.draft("prompt.body")).frame(minHeight:140).accessibilityLabel("Prompt draft").phoneInput()
                 Text("Draft text is temporary and is never executed or saved as a prompt record.").font(.caption)
                 UnavailableAction(title:"Apply prompt",reason:"Prompt injection and persona/group execution are unavailable.")
             }

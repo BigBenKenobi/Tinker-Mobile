@@ -17,7 +17,7 @@ struct CompanionView: View {
                 else {
                     Button("Scan desktop pairing QR") { scanning = true }.disabled(model.isolated)
                     DisclosureGroup("Paste pairing QR text") {
-                        TextEditor(text:$qr).frame(minHeight:100).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        TextEditor(text:$qr).frame(minHeight:100).textInputAutocapitalization(.never).autocorrectionDisabled().phoneInput()
                         Button("Pair") { let code = qr; qr = ""; Task { await model.pair(qr:code) } }.disabled(model.syncing)
                     }
                 }
