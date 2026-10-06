@@ -19,12 +19,19 @@ import UIKit
     }
     /// Scroll the drawer until a destination is actually hittable at large text.
     private func navigate(_ route: String, in app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["shell.tools"].waitForExistence(timeout:10),"Tools toolbar must survive rotation")
         app.buttons["shell.tools"].tap()
         let drawer = app.scrollViews["shell.drawer"]
         XCTAssertTrue(drawer.waitForExistence(timeout:5),"The tools drawer must open")
         let button = app.buttons["route." + route]
-        for _ in 0..<12 where !button.isHittable {
-            if button.exists && button.frame.midY < drawer.frame.minY { drawer.swipeDown(velocity:.slow) }
+        let window = app.windows.firstMatch
+        let banner = app.staticTexts["fixture.banner"]
+        func fullyVisible() -> Bool {
+            guard button.exists && button.isHittable else { return false }
+            return button.frame.minY >= window.frame.minY + 8 && button.frame.maxY <= banner.frame.minY - 8
+        }
+        for _ in 0..<20 where !fullyVisible() {
+            if button.exists && button.frame.minY < window.frame.minY + 8 { drawer.swipeDown(velocity:.slow) }
             else { drawer.swipeUp(velocity:.slow) }
         }
         if !button.isHittable {
@@ -32,7 +39,7 @@ import UIKit
             print(app.debugDescription)
             print("TINKER_UI_HIERARCHY_END")
         }
-        XCTAssertTrue(button.isHittable,"Unreachable destination: " + route)
+        XCTAssertTrue(fullyVisible(),"Unreachable destination: " + route)
         button.tap()
         let title = ["new_chat":"Tinker","search":"Search","email":"Email","tools":"Tools","brain":"Brain","calendar":"Calendar","compare":"Model Compare","cookbook":"Cookbook","research":"Deep Research","gallery":"Gallery","library":"Library","notes":"Notes","tasks":"Tasks","companion":"Companion","theme":"Theme","settings":"Settings","account":"Account","model_selector":"Models"][route]!
         let arrived = app.navigationBars[title].waitForExistence(timeout:5)

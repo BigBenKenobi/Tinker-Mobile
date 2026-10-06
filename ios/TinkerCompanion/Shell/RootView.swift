@@ -54,7 +54,7 @@ struct RootView: View {
             }
         }
         .safeAreaInset(edge:.bottom) {
-            if model.isolated { Text("Preview/test fixture · isolated local data").font(.caption).frame(maxWidth:.infinity).padding(6).background(presentation.theme.color("panel")) }
+            if model.isolated { Text("Preview/test fixture · isolated local data").font(.caption).lineLimit(1).minimumScaleFactor(0.5).frame(maxWidth:.infinity).padding(6).background(presentation.theme.color("panel")).accessibilityIdentifier("fixture.banner") }
         }
         .buttonStyle(PhoneButtonStyle())
         .environmentObject(presentation)

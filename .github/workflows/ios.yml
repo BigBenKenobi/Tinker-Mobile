@@ -60,6 +60,9 @@ jobs:
           images = [p for p in root.rglob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg')]
           print('::notice title=XCTest screenshots::Exported ' + str(len(images)) + ' image attachments')
           PY
+      - name: Export native diagnostics
+        if: always()
+        run: xcrun xcresulttool export diagnostics --path /tmp/TinkerCompanion.xcresult --output-path "$RUNNER_TEMP/tinker-diagnostics"
       - name: Preserve Xcode results
         if: always()
         uses: actions/upload-artifact@v4
@@ -70,6 +73,7 @@ jobs:
             ${{ runner.temp }}/tinker-xcode.log
             ${{ runner.temp }}/tinker-test-summary.json
             ${{ runner.temp }}/tinker-screenshots
+            ${{ runner.temp }}/tinker-diagnostics
           retention-days: 3
   unsigned-device-ipa:
     if: github.event_name == 'workflow_dispatch'
