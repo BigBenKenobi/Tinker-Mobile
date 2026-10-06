@@ -11,8 +11,8 @@ b49b68bc6e4da6b3b5f0a3fc5c42b2c75435c39a.
 | Swift tree-sitter grammar | 31 sources, zero grammar errors; no type/API/link validation |
 | Desktop theme reference | 8 tests passed |
 | Desktop companion/recurrence/ICS reference | 10 tests passed |
-| New mobile unit/UI tests | Added; unexecuted |
-| Xcode build, Simulator regression, screenshots | Linux has no Xcode; GitHub API Forbidden |
+| Native unit tests | 24 passed on each Simulator in run 37457168704 (SHA 3d2a2af) |
+| Xcode build / UI regression | Xcode 16.4 builds on small and large iPhone Simulators; 2 of 4 UI tests failed per target in run 37457168704; fixes and diagnostic collection running |
 | Final unsigned IPA | Not built |
 | Original screenshot parity | Reference media absent from desktop checkout |
 | Physical iPhone acceptance | Pending |
@@ -29,7 +29,10 @@ in a tools venv outside the reference checkout. Reference files remain clean.
 New iOS tests cover phone-only persistence, duplicate/malformed imports, palette
 round trips/defaults/contrast, isolated sync, NZ DST and task projections.
 Existing native regressions remain in the scheme. UI tests add retained/restart
-draft checks, fixture launches and screenshots. Native tests have not run here.
+draft checks, fixture launches and screenshots. Native builds and unit tests have executed on GitHub macOS runners.
+Run 37457168704 executed 28 tests per device: 26 passed, 2 failed, zero
+skipped or expected failures. This is diagnosed intermediate evidence, not
+full UI acceptance. GitHub API and artifact download access now work.
 
 Run .github/workflows/ios.yml on this branch or run the shared scheme on a Mac.
 Both small and large Simulator jobs must pass before native readiness is claimed.

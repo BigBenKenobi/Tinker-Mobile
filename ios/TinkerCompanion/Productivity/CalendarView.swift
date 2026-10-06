@@ -1,4 +1,6 @@
 // Calendar month/week/day and Files ICS presentation over AppModel local data.
+// A scrollable panel stack keeps the month grid outside UIKit List self-sizing
+// cells, which recursively invalidated collection layout during rotation.
 // CalendarProjection bounds date expansion; visibility filters events and due
 // tasks remain read-only projections. Editors delegate atomic saves to AppModel.
 import SwiftUI
@@ -56,9 +58,10 @@ struct CalendarView: View {
     private var dueTasks: [ProjectedDueTask] { CalendarProjection.dueTasks(model.store.records,interval:period) }
 
     var body: some View {
-        List {
-            Section { SyncStatus(model:model) }.phoneSection()
-            Section("Calendars") {
+        ScrollView {
+          VStack(alignment:.leading,spacing:presentation.theme.spacing) {
+            Panel(title:"Companion") { SyncStatus(model:model) }
+            Panel(title:"Calendars") {
                 ForEach(calendars) { row in
                     HStack {
                         Circle().fill(Color(hex:row.value?.text("color") ?? "#67cf92")).frame(width:12,height:12).accessibilityHidden(true)
@@ -71,8 +74,8 @@ struct CalendarView: View {
                     }
                 }
                 Button("Add calendar") { newCalendar = true }
-            }.phoneSection()
-            Section("Presentation") {
+            }
+            Panel(title:"Presentation") {
                 Picker("Period",selection:presentation.selection("calendar.mode",fallback:"Month")) { ForEach(["Month","Week","Day"],id:\.self) { Text($0) } }.pickerStyle(.segmented)
                 if mode == "Month" {
                     Text(selectedDay.formatted(.dateTime.month(.wide).year())).font(.headline)
@@ -105,29 +108,30 @@ struct CalendarView: View {
                     Spacer()
                     Button("Next") { shift(1) }.frame(minHeight:44)
                 }
-            }.phoneSection()
-            if !expansion.errors.isEmpty { Section("Calendar expansion errors") { ForEach(expansion.errors,id:\.self) { Text($0).foregroundStyle(.red) } }.phoneSection() }
-            Section("Due tasks · projected") {
+            }
+            if !expansion.errors.isEmpty { Panel(title:"Calendar expansion errors") { ForEach(expansion.errors,id:\.self) { Text($0).foregroundStyle(.red) } } }
+            Panel(title:"Due tasks · projected") {
                 if dueTasks.isEmpty { Text("No tasks due in this period").foregroundStyle(.secondary) }
                 ForEach(dueTasks) { task in
                     VStack(alignment:.leading) { Text(task.title); Text(task.due.formatted()).font(.caption); if task.linkedNoteID != nil { Label("Linked note reminder",systemImage:"note.text").font(.caption) } }
                 }
                 Text("Tasks remain tasks; this view does not create calendar events.").font(.caption)
-            }.phoneSection()
-            Section(mode + " agenda") {
+            }
+            Panel(title:mode + " agenda") {
                 if search.isEmpty {
                     if occurrences.isEmpty { Text("No visible events in this period").foregroundStyle(.secondary) }
                     ForEach(occurrences) { occurrence in
                         Button { edit(occurrence.graph) } label: {
                             VStack(alignment:.leading) { Text(occurrence.title.isEmpty ? "Untitled" : occurrence.title).font(.headline); Text(occurrence.start.formatted(date:.abbreviated,time:.omitted)).font(.caption); Text(occurrence.graph.flag("all_day") ? "All day" : occurrence.start.formatted(date:.omitted,time:.shortened) + " – " + occurrence.end.formatted(date:.omitted,time:.shortened)).font(.caption); Text(occurrence.graph.text("location")).font(.caption) }
-                        }.swipeActions { Button("Delete series",role:.destructive) { deleting = row(occurrence.graph) } }
+                        }.contextMenu { Button("Delete series",role:.destructive) { deleting = row(occurrence.graph) } }
                     }
                 } else {
                     ForEach(visibleEvents.filter { ($0.title + " " + $0.text("description") + " " + $0.text("location")).localizedCaseInsensitiveContains(search) }) { graph in
                         Button(graph.title.isEmpty ? "Untitled" : graph.title) { edit(graph) }
                     }
                 }
-            }.phoneSection()
+            }
+          }.padding()
         }.navigationTitle("Calendar").searchable(text:presentation.draft("calendar.search")).refreshable { await model.sync() }
         .toolbar {
             Button { if calendars.isEmpty { newCalendar = true } else { newItem = true } } label: { Label("New event",systemImage:"plus") }
