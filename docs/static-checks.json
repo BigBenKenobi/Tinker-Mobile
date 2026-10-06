@@ -4,6 +4,18 @@
   "xcode_project_objects": 52,
   "plist_and_scheme": "parsed",
   "shared_contract_and_fixture": "byte-identical",
-  "ios_build": "PASS: Xcode 16.4 / iPhone 16 Pro Simulator iOS 18.5, 11 tests, 0 failures; code f84d5c02f3f9017e5f506a47a45c871a25ffff83",
+  "ios_build": "PASS: Xcode 16.4 / iPhone 16 Pro Simulator iOS 18.5, 16 tests, 0 failures; code 51474b7bb51ecfe34c86a506e15dfe4775c92d3c; run 37539495753",
+  "unsigned_device_build": "PASS: Xcode 26.6 (17F113), generic iPhone Release build, bundle com.bigbenkenobi.tinker-companion, unsigned",
+  "release_gate": {
+    "source_commit": "51474b7bb51ecfe34c86a506e15dfe4775c92d3c",
+    "workflow_run_id": 37539495753,
+    "workflow_url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37539495753",
+    "artifact": "dist/TinkerCompanion-unsigned-51474b7-run-37539495753.ipa",
+    "artifact_bytes": 490134,
+    "artifact_sha256": "5c359e4f1ea3fb878cd82f764097d6ece021897da9e6f82eabd21ded38c18544",
+    "zip_integrity": "PASS",
+    "bundle_identifier": "com.bigbenkenobi.tinker-companion",
+    "code_signature": "ABSENT"
+  },
   "physical_iphone": "PENDING"
 }
