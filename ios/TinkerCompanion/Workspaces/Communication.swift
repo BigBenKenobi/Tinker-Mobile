@@ -7,7 +7,7 @@ struct SearchWorkspace: View {
     var body: some View {
         WorkspaceLayout(title:"Search") {
             Panel(title:"Find in Tinker") {
-                TextField("Search conversations and library",text:presentation.draft("search.query")).textFieldStyle(.roundedBorder)
+                TextField("Search conversations and library",text:presentation.draft("search.query"))
                 Picker("Scope",selection:presentation.selection("search.scope",fallback:"All")) { ForEach(["All","Chats","Documents","Research"],id:\.self) { Text($0) } }
                 UnavailableAction(title:"Search",icon:"magnifyingglass",reason:"Searchable conversation and library storage is unavailable on iPhone.")
             }
@@ -23,7 +23,7 @@ struct EmailWorkspace: View {
         WorkspaceLayout(title:"Email") {
             Panel(title:"Mailbox") {
                 Picker("Mailbox",selection:presentation.selection("email.mailbox",fallback:"Inbox")) { ForEach(["Inbox","Sent","Drafts","Archive","Trash"],id:\.self) { Text($0) } }
-                TextField("Filter messages",text:presentation.draft("email.filter")).textFieldStyle(.roundedBorder)
+                TextField("Filter messages",text:presentation.draft("email.filter"))
                 Toggle("Unread only",isOn:Binding(get:{ presentation.selections["email.unread"] == "yes" },set:{ presentation.selections["email.unread"] = $0 ? "yes" : "no" }))
                 HStack { Button("Compose") { composing = true }.frame(minHeight:44); Spacer(); Button("Accounts") { accounts = true }.frame(minHeight:44) }
             }

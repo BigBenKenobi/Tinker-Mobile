@@ -44,10 +44,10 @@ struct ThemeBundle: Codable, Equatable {
     }
     /// Preserve exported desktop colors while lifting rendered text/button color
     /// contrast to WCAG AA against the active panel/background when necessary.
-    func color(_ role: String) -> Color {
+    func color(_ role: String,on surface: String = "panel") -> Color {
         let raw = palette[role] ?? "#ffffff"
         guard ["text","muted","accent"].contains(role) else { return Color(hex:raw) }
-        return Color(hex:Self.accessibleHex(raw,against:palette["panel"] ?? "#000000"))
+        return Color(hex:Self.accessibleHex(raw,against:palette[surface] ?? "#000000"))
     }
     static func contrast(_ lhs: String,_ rhs: String) -> Double {
         func luminance(_ hex: String) -> Double {

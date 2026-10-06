@@ -21,6 +21,7 @@ struct UnavailableAction: View {
             Button {} label: {
                 Label(title,systemImage:icon).frame(minHeight:44).padding(.horizontal,8)
                     .background(title.hasPrefix("Send") ? presentation.theme.color("send_bg") : Color.clear,in:Capsule())
+                    .foregroundStyle(presentation.theme.color("accent",on:title.hasPrefix("Send") ? "send_bg" : "panel"))
             }.disabled(true).accessibilityHint(reason)
             Text(reason).font(.caption).foregroundStyle(.secondary)
         }
@@ -82,6 +83,7 @@ struct PhoneInputStyle: ViewModifier {
     @EnvironmentObject private var presentation: PresentationStore
     func body(content: Content) -> some View {
         content.scrollContentBackground(.hidden).padding(8)
+            .foregroundStyle(presentation.theme.color("text",on:"input_bg"),presentation.theme.color("muted",on:"input_bg"))
             .background(presentation.theme.color("input_bg"),in:RoundedRectangle(cornerRadius:8))
             .overlay(RoundedRectangle(cornerRadius:8).stroke(presentation.theme.color("border"),lineWidth:1))
     }

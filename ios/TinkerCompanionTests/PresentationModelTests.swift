@@ -78,8 +78,10 @@ import XCTest
         for theme in ThemeBundle.presets.values {
             let original = theme.palette
             for role in ["text","muted","accent"] {
-                let accessible = ThemeBundle.accessibleHex(theme.palette[role]!,against:theme.palette["panel"]!)
-                XCTAssertGreaterThanOrEqual(ThemeBundle.contrast(accessible,theme.palette["panel"]!),4.5)
+                for surface in ["background","panel","input_bg","send_bg"] {
+                    let accessible = ThemeBundle.accessibleHex(theme.palette[role]!,against:theme.palette[surface]!)
+                    XCTAssertGreaterThanOrEqual(ThemeBundle.contrast(accessible,theme.palette[surface]!),4.5,"Unreadable " + role + " on " + surface)
+                }
             }
             XCTAssertEqual(theme.palette,original)
         }
