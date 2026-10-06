@@ -13,14 +13,17 @@ import UIKit
         app.launchEnvironment["TINKER_TEST_RUN"] = UUID().uuidString
         app.launchEnvironment["TINKER_TEST_FIXTURE"] = fixture
         if largeText { app.launchArguments += ["-UIPreferredContentSizeCategoryName","UICTContentSizeCategoryAccessibilityXXXL"] }
+        XCUIDevice.shared.orientation = .portrait
         app.launch()
         return app
     }
     /// Scroll the drawer until a destination is actually hittable at large text.
     private func navigate(_ route: String, in app: XCUIApplication) {
         app.buttons["shell.tools"].tap()
+        let drawer = app.scrollViews["shell.drawer"]
+        XCTAssertTrue(drawer.waitForExistence(timeout:5),"The tools drawer must open")
         let button = app.buttons["route." + route]
-        for _ in 0..<10 where !button.isHittable { app.swipeUp() }
+        for _ in 0..<10 where !button.isHittable { drawer.swipeUp() }
         if !button.isHittable {
             print("TINKER_UI_HIERARCHY_BEGIN")
             print(app.debugDescription)
@@ -39,10 +42,9 @@ import UIKit
         let composer = app.textViews["home.composer"]
         XCTAssertTrue(composer.waitForExistence(timeout:10))
         composer.tap(); composer.typeText("Temporary acceptance draft")
-        app.buttons["shell.tools"].tap()
-        app.buttons["route.notes"].tap()
+        navigate("notes",in:app)
         XCTAssertTrue(app.navigationBars["Notes"].waitForExistence(timeout:5))
-        app.buttons["shell.tools"].tap(); app.buttons["route.new_chat"].tap()
+        navigate("new_chat",in:app)
         XCTAssertEqual(composer.value as? String,"Temporary acceptance draft")
         let attachment = XCTAttachment(screenshot:app.screenshot())
         attachment.name = "Home-retained-draft"; attachment.lifetime = .keepAlways
@@ -86,7 +88,7 @@ import UIKit
         navigate("tasks",in:app)
         app.terminate(); app.launch()
         XCTAssertTrue(app.navigationBars["Tasks"].waitForExistence(timeout:10))
-        app.buttons["shell.tools"].tap(); app.buttons["route.new_chat"].tap()
+        navigate("new_chat",in:app)
         XCTAssertEqual(app.textViews["home.composer"].value as? String,"")
     }
 }

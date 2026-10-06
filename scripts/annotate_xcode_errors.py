@@ -23,7 +23,9 @@ def main():
         if line.strip() == "TINKER_UI_HIERARCHY_BEGIN":
             hierarchy = []; continue
         if line.strip() == "TINKER_UI_HIERARCHY_END" and hierarchy is not None:
-            print("::notice title=Isolated UI hierarchy::" + escape("\n".join(hierarchy)[:50000]))
+            text = "\n".join(hierarchy)[:50000]
+            for offset in range(0,len(text),3000):
+                print("::notice title=Isolated UI hierarchy " + str(offset//3000 + 1) + "::" + escape(text[offset:offset+3000]))
             hierarchy = None; continue
         if hierarchy is not None:
             hierarchy.append(line); continue

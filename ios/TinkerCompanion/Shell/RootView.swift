@@ -48,7 +48,7 @@ struct RootView: View {
                                     }.accessibilityIdentifier("route." + route.id)
                                 }
                             }.padding()
-                        }.frame(width:min(320,geometry.size.width * 0.88)).background(presentation.theme.color("sidebar"))
+                        }.accessibilityIdentifier("shell.drawer").frame(width:min(320,geometry.size.width * 0.88)).background(presentation.theme.color("sidebar"))
                     }
                 }.transition(.move(edge:.leading)).zIndex(3)
             }
