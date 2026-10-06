@@ -8,6 +8,13 @@ import XCTest
     private func snapshot(_ records: [RecordVersion] = [], cursor: Int = 0) -> Snapshot {
         Snapshot(version:2,server_id:"desktop_fixture",cursor:cursor,records:records,conflicts:[])
     }
+    func testTransportAcceptsOnlyMatchingProtocolTwoDesktop() throws {
+        let valid = Data(#"{"version":2,"server_id":"desktop_fixture"}"#.utf8)
+        XCTAssertNoThrow(try Transport.validateEnvelope(valid,serverID:"desktop_fixture"))
+        XCTAssertThrowsError(try Transport.validateEnvelope(valid,serverID:"another_desktop"))
+        let old = Data(#"{"version":1,"server_id":"desktop_fixture"}"#.utf8)
+        XCTAssertThrowsError(try Transport.validateEnvelope(old,serverID:"desktop_fixture"))
+    }
     func testOfflineEditsAndStableIDsSurviveReopen() throws {
         let path = location(); let graph = Graph.new("note")
         do { let store = try LocalStore(path:path); try store.edit(graph,kind:"note",id:graph.id); XCTAssertEqual(store.pendingCount,1) }

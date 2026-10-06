@@ -119,8 +119,13 @@ final class Transport {
             throw CompanionError(status == 401 ? "Desktop pairing rejected. Your offline edits are still saved." : "Desktop sync failed (\(status)). Your offline edits are still saved.")
         }
         guard data.count <= 32 * 1024 * 1024 else { throw CompanionError("Desktop response exceeds the milestone limit") }
-        let envelope = try JSONSerialization.jsonObject(with:data) as? [String:Any]
-        guard envelope?["version"] as? Int == 1, envelope?["server_id"] as? String == serverID else { throw CompanionError("Desktop identity/version mismatch") }
+        try Self.validateEnvelope(data, serverID:serverID)
         return try JSONDecoder().decode(type,from:data)
+    }
+    static func validateEnvelope(_ data: Data, serverID: String) throws {
+        let envelope = try JSONSerialization.jsonObject(with:data) as? [String:Any]
+        guard envelope?["version"] as? Int == 2, envelope?["server_id"] as? String == serverID else {
+            throw CompanionError("Desktop identity/version mismatch")
+        }
     }
 }
