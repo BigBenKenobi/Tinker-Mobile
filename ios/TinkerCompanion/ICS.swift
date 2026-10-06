@@ -71,8 +71,9 @@ struct ICS {
                 let values = properties[key] ?? []; guard values.count <= 1 else { throw CompanionError("Duplicate \(key)") }
                 return values.first ?? fallback.map { Property(value:$0,params:[:]) }
             }
-            guard let uid = try one("UID")?.value, let first = try one("DTSTART") else { throw CompanionError("Event requires UID and DTSTART") }
-            try Graph.identifier(uid)
+            guard let rawUID = try one("UID")?.value, let first = try one("DTSTART") else { throw CompanionError("Event requires UID and DTSTART") }
+            let uid = unescape(rawUID)
+            guard !uid.isEmpty, !uid.contains("\0"), uid.utf8.count <= 262144 else { throw CompanionError("Invalid event UID") }
             let zone = first.params["TZID"] ?? (first.value.hasSuffix("Z") ? "UTC" : defaultTimezone)
             let (start,allDay) = try date(first,timezone:zone)
             let end: Date
@@ -90,7 +91,7 @@ struct ICS {
                 continue
             }
             guard bases[uid] == nil else { throw CompanionError("Duplicate event UID") }
-            var g = Graph.new("event"); g.set("id",uid); g.set("ics_uid",uid); g.set("title",title); g.set("start_at",Dates.stamp(start)); g.set("end_at",Dates.stamp(end)); g.record["all_day"] = .bool(allDay); g.set("timezone",zone); g.optional("recurrence",repeatRule)
+            var g = Graph.new("event"); g.set("ics_uid",uid); g.set("title",title); g.set("start_at",Dates.stamp(start)); g.set("end_at",Dates.stamp(end)); g.record["all_day"] = .bool(allDay); g.set("timezone",zone); g.optional("recurrence",repeatRule)
             g.set("description",unescape(try one("DESCRIPTION","")!.value)); g.set("location",unescape(try one("LOCATION","")!.value))
             for a in alarms {
                 guard Set(a.keys).isSubset(of:["ACTION","TRIGGER","DESCRIPTION"]), a.values.allSatisfy({ $0.count == 1 }), a["ACTION"]?.first?.value == "DISPLAY", let trigger = a["TRIGGER"]?.first else { throw CompanionError("Only one-shot DISPLAY alarms are supported") }
@@ -107,19 +108,20 @@ struct ICS {
                     guard values.contains(where:{ $0 > 0 }) else { throw CompanionError("Invalid alarm duration") }
                     fire = start.addingTimeInterval(-Double(values[0]*86400 + values[1]*3600 + values[2]*60 + values[3]))
                 } else { fire = try date(trigger,timezone:zone).0 }
-                g.reminders.append(Reminder(id:Dates.id("reminder"),owner_kind:"event",owner_id:uid,fire_at:Dates.stamp(fire),message:unescape(a["DESCRIPTION"]?.first?.value ?? title)))
+                g.reminders.append(Reminder(id:Dates.id("reminder"),owner_kind:"event",owner_id:g.id,fire_at:Dates.stamp(fire),message:unescape(a["DESCRIPTION"]?.first?.value ?? title)))
             }
             for property in properties["EXDATE"] ?? [] {
                 for part in property.value.components(separatedBy:",") {
                     let (original,_) = try date(Property(value:part,params:property.params),timezone:zone)
-                    g.exceptions.append(EventException(id:Dates.id("exception"),event_id:uid,occurrence_at:Dates.stamp(original),cancelled:true,start_at:nil,end_at:nil,title:nil))
+                    g.exceptions.append(EventException(id:Dates.id("exception"),event_id:g.id,occurrence_at:Dates.stamp(original),cancelled:true,start_at:nil,end_at:nil,title:nil))
                 }
             }
             bases[uid] = g
         }
         for (uid,exception) in overrides {
             guard bases[uid] != nil else { throw CompanionError("Exception has no parent event in this file") }
-            bases[uid]!.exceptions.removeAll { $0.occurrence_at == exception.occurrence_at }; bases[uid]!.exceptions.append(exception)
+            var attached = exception; attached.event_id = bases[uid]!.id
+            bases[uid]!.exceptions.removeAll { $0.occurrence_at == attached.occurrence_at }; bases[uid]!.exceptions.append(attached)
         }
         // The owning calendar is chosen by LocalStore after parsing succeeds.
         return bases.values.sorted { $0.id < $1.id }
@@ -129,6 +131,7 @@ struct ICS {
         for g in graphs {
             try g.validate(); guard g.kind == "event" else { throw CompanionError("ICS export contains only calendar events") }
             let zone = TimeZone(identifier:g.text("timezone"))!
+            let uid = g.text("ics_uid"); guard !uid.isEmpty else { throw CompanionError("Event needs a stable ICS UID") }
             func line(_ name: String, _ value: String) throws -> String {
                 let f = DateFormatter(); f.locale = Locale(identifier:"en_US_POSIX"); f.timeZone = zone
                 if g.flag("all_day") { f.dateFormat = "yyyyMMdd"; return name + ";VALUE=DATE:" + f.string(from:try Dates.parse(value)) }
@@ -138,14 +141,14 @@ struct ICS {
             func utc(_ value: String) throws -> String {
                 let f = DateFormatter(); f.locale = Locale(identifier:"en_US_POSIX"); f.timeZone = TimeZone(secondsFromGMT:0); f.dateFormat = "yyyyMMdd'T'HHmmss'Z'"; return f.string(from:try Dates.parse(value))
             }
-            lines += ["BEGIN:VEVENT","UID:"+g.id,"DTSTAMP:"+(try utc(g.text("updated_at"))),try line("DTSTART",g.text("start_at")),try line("DTEND",g.text("end_at")),"SUMMARY:"+escape(g.title),"DESCRIPTION:"+escape(g.text("description")),"LOCATION:"+escape(g.text("location"))]
+            lines += ["BEGIN:VEVENT","UID:"+escape(uid),"DTSTAMP:"+(try utc(g.text("updated_at"))),try line("DTSTART",g.text("start_at")),try line("DTEND",g.text("end_at")),"SUMMARY:"+escape(g.title),"DESCRIPTION:"+escape(g.text("description")),"LOCATION:"+escape(g.text("location"))]
             if !g.text("recurrence").isEmpty { lines.append("RRULE:"+g.text("recurrence")) }
             for reminder in g.reminders where !reminder.completed { lines += ["BEGIN:VALARM","ACTION:DISPLAY","TRIGGER;VALUE=DATE-TIME:"+(try utc(reminder.fire_at)),"DESCRIPTION:"+escape(reminder.message),"END:VALARM"] }
             lines.append("END:VEVENT")
             let duration = try Dates.parse(g.text("end_at")).timeIntervalSince(Dates.parse(g.text("start_at")))
             for e in g.exceptions {
                 let end = try e.end_at ?? Dates.stamp(Dates.parse(e.occurrence_at).addingTimeInterval(duration))
-                lines += ["BEGIN:VEVENT","UID:"+g.id,try line("RECURRENCE-ID",e.occurrence_at),try line("DTSTART",e.start_at ?? e.occurrence_at),try line("DTEND",end),"SUMMARY:"+escape(e.title ?? g.title)]
+                lines += ["BEGIN:VEVENT","UID:"+escape(uid),try line("RECURRENCE-ID",e.occurrence_at),try line("DTSTART",e.start_at ?? e.occurrence_at),try line("DTEND",end),"SUMMARY:"+escape(e.title ?? g.title)]
                 if e.cancelled { lines.append("STATUS:CANCELLED") }; lines.append("END:VEVENT")
             }
         }

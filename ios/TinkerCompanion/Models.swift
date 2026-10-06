@@ -1,4 +1,4 @@
-// Version-one companion wire models and strict shared data rules.
+// Protocol-two companion wire models and strict shared data rules.
 // The store owns durable graphs; UI edits copies and sync transfers whole parent
 // graphs. JSON values preserve desktop metadata and exact stable IDs. Credentials
 // are modeled separately and are never part of SQLite, ICS, or domain exports.
@@ -132,9 +132,13 @@ struct Graph: Codable, Equatable, Identifiable {
         if kind == "event" {
             record["description"] = native["notes"] ?? .string("")
             record["timezone"] = native["timezone_name"] ?? .string("UTC")
-            record["start_at"] = .string(Self.instant(native["start_value"]?.text ?? ""))
-            let end = Self.instant(native["end_value"]?.text ?? "")
-            record["end_at"] = .string(native["all_day"]?.flag == true ? Self.dayAfter(end) : end)
+            let timezone = record["timezone"]?.text ?? "UTC"
+            record["start_at"] = .string(try Self.instant(native["start_value"]?.text ?? "", timezone:timezone))
+            let end = try Self.instant(native["end_value"]?.text ?? "", timezone:timezone)
+            let projectedEnd: String
+            if native["all_day"]?.flag == true { projectedEnd = try Self.shiftDay(end,by:1,timezone:timezone) }
+            else { projectedEnd = end }
+            record["end_at"] = .string(projectedEnd)
             record["recurrence"] = .string(Self.rule(native))
         }
         let alarmRows: [[String: JSONValue]] = try c.decode([[String: JSONValue]].self, forKey: .reminders)
@@ -144,13 +148,23 @@ struct Graph: Codable, Equatable, Identifiable {
                      notification_owner:row["notification_owner"]?.text ?? "phone", completed:row["completed"]?.flag ?? false)
         }
         let exceptionRows: [[String: JSONValue]] = try c.decode([[String: JSONValue]].self, forKey: .exceptions)
-        exceptions = exceptionRows.map { (row: [String: JSONValue]) -> EventException in
+        let projectedRecord = record
+        exceptions = try exceptionRows.map { (row: [String: JSONValue]) -> EventException in
             let original = row["original_start"]?.text ?? ""
             let replacement = row["replacement_json"]?.text ?? ""
             let object = (try? JSONDecoder().decode([String: JSONValue].self, from:Data(replacement.utf8))) ?? [:]
-            return EventException(id:original, event_id:row["event_id"]?.text ?? "", occurrence_at:Self.instant(original),
-                                  cancelled:row["kind"]?.text == "cancelled", start_at:object["start"].map { Self.instant($0.text) },
-                                  end_at:object["end"].map { Self.instant($0.text) }, title:object["title"]?.text, originalValue:object)
+            let timezone = projectedRecord["timezone"]?.text ?? "UTC"
+            let replacementTimezone = object["timezone_name"]?.text ?? timezone
+            let replacementAllDay = object["all_day"]?.flag ?? projectedRecord["all_day"]?.flag ?? false
+            let start = try object["start"].map { try Self.instant($0.text,timezone:replacementTimezone) }
+            let nativeEnd = try object["end"].map { try Self.instant($0.text,timezone:replacementTimezone) }
+            let end: String?
+            if let nativeEnd, replacementAllDay { end = try Self.shiftDay(nativeEnd,by:1,timezone:replacementTimezone) }
+            else if let nativeEnd { end = nativeEnd }
+            else { end = nil }
+            return EventException(id:original, event_id:row["event_id"]?.text ?? "", occurrence_at:try Self.instant(original,timezone:timezone),
+                                  cancelled:row["kind"]?.text == "cancelled", start_at:start,
+                                  end_at:end, title:object["title"]?.text, originalValue:object)
         }
     }
     func encode(to encoder: Encoder) throws {
@@ -177,8 +191,12 @@ struct Graph: Codable, Equatable, Identifiable {
             for key in ["id","title","location","all_day","created_at","updated_at","calendar_id","ics_uid"] { r[key] = record[key] }
             r["notes"] = record["description"] ?? .string("")
             r["timezone_name"] = record["timezone"] ?? .string("UTC")
-            r["start_value"] = .string(Self.dateValue(text("start_at"), allDay:flag("all_day")))
-            r["end_value"] = .string(Self.dateValue(flag("all_day") ? Self.dayBefore(text("end_at")) : text("end_at"), allDay:flag("all_day")))
+            let timezone = text("timezone")
+            r["start_value"] = .string(try Self.dateValue(text("start_at"),allDay:flag("all_day"),timezone:timezone))
+            let nativeEnd: String
+            if flag("all_day") { nativeEnd = try Self.shiftDay(text("end_at"),by:-1,timezone:timezone) }
+            else { nativeEnd = text("end_at") }
+            r["end_value"] = .string(try Self.dateValue(nativeEnd,allDay:flag("all_day"),timezone:timezone))
             let repeatRule = try Recurrence(text("recurrence"))
             if let frequency = repeatRule.frequency {
                 r["recurrence_frequency"] = .string(frequency)
@@ -200,12 +218,16 @@ struct Graph: Codable, Equatable, Identifiable {
              "message": .string(reminder.message), "notification_owner": .string(reminder.notification_owner),
              "completed": .bool(reminder.completed)] as [String: JSONValue]
         }, forKey:.reminders)
-        try c.encode(exceptions.map { item -> [String: JSONValue] in
-            if item.cancelled { return ["event_id": .string(item.event_id), "original_start": .string(Self.dateValue(item.occurrence_at,allDay:flag("all_day"))), "kind": .string("cancelled"), "replacement_json": .null] }
+        let encodedExceptions = try exceptions.map { item -> [String: JSONValue] in
+            let timezone = text("timezone")
+            if item.cancelled { return ["event_id": .string(item.event_id), "original_start": .string(try Self.dateValue(item.occurrence_at,allDay:flag("all_day"),timezone:timezone)), "kind": .string("cancelled"), "replacement_json": .null] }
             var value = item.originalValue ?? [:]
             value["id"] = .string(item.event_id); value["title"] = .string(item.title ?? title)
-            value["start"] = .string(Self.dateValue(item.start_at ?? item.occurrence_at,allDay:flag("all_day")))
-            value["end"] = .string(Self.dateValue(flag("all_day") ? Self.dayBefore(item.end_at ?? text("end_at")) : item.end_at ?? text("end_at"),allDay:flag("all_day")))
+            value["start"] = .string(try Self.dateValue(item.start_at ?? item.occurrence_at,allDay:flag("all_day"),timezone:timezone))
+            let replacementEnd: String
+            if flag("all_day") { replacementEnd = try Self.shiftDay(item.end_at ?? text("end_at"),by:-1,timezone:timezone) }
+            else { replacementEnd = item.end_at ?? text("end_at") }
+            value["end"] = .string(try Self.dateValue(replacementEnd,allDay:flag("all_day"),timezone:timezone))
             value["calendar_id"] = record["calendar_id"] ?? .string("")
             value["all_day"] = record["all_day"] ?? .bool(false)
             value["timezone_name"] = record["timezone"] ?? .string("UTC")
@@ -215,24 +237,35 @@ struct Graph: Codable, Equatable, Identifiable {
             value["created_at"] = record["created_at"] ?? .string("")
             value["updated_at"] = record["updated_at"] ?? .string("")
             let bytes = (try? JSONEncoder().encode(value)) ?? Data("{}".utf8)
-            return ["event_id": .string(item.event_id), "original_start": .string(Self.dateValue(item.occurrence_at,allDay:flag("all_day"))), "kind": .string("override"), "replacement_json": .string(String(decoding:bytes,as:UTF8.self))]
-        }, forKey:.exceptions)
+            return ["event_id": .string(item.event_id), "original_start": .string(try Self.dateValue(item.occurrence_at,allDay:flag("all_day"),timezone:timezone)), "kind": .string("override"), "replacement_json": .string(String(decoding:bytes,as:UTF8.self))]
+        }
+        try c.encode(encodedExceptions,forKey:.exceptions)
     }
-    private static func instant(_ value: String) -> String {
+    private static func instant(_ value: String, timezone: String) throws -> String {
         if value.hasPrefix("datetime:") { return String(value.dropFirst(9)) }
-        if value.hasPrefix("date:") { return String(value.dropFirst(5)) + "T00:00:00Z" }
+        if value.hasPrefix("date:") {
+            guard let zone = TimeZone(identifier:timezone) else { throw CompanionError("Unknown timezone") }
+            let text = String(value.dropFirst(5))
+            let formatter = DateFormatter(); formatter.locale = Locale(identifier:"en_US_POSIX")
+            formatter.calendar = Calendar(identifier:.gregorian); formatter.timeZone = zone
+            formatter.dateFormat = "yyyy-MM-dd"; formatter.isLenient = false
+            guard let date = formatter.date(from:text), formatter.string(from:date) == text else { throw CompanionError("Invalid calendar date") }
+            return Dates.stamp(date)
+        }
         return value
     }
-    private static func dateValue(_ value: String, allDay: Bool) -> String {
-        (allDay ? "date:" + String(value.prefix(10)) : "datetime:" + value)
+    private static func dateValue(_ value: String, allDay: Bool, timezone: String) throws -> String {
+        guard allDay else { return "datetime:" + value }
+        guard let zone = TimeZone(identifier:timezone) else { throw CompanionError("Unknown timezone") }
+        let formatter = DateFormatter(); formatter.locale = Locale(identifier:"en_US_POSIX")
+        formatter.calendar = Calendar(identifier:.gregorian); formatter.timeZone = zone; formatter.dateFormat = "yyyy-MM-dd"
+        return "date:" + formatter.string(from:try Dates.parse(value))
     }
-    private static func dayAfter(_ value: String) -> String {
-        guard let date = try? Dates.parse(value) else { return value }
-        return Dates.stamp(date.addingTimeInterval(86400))
-    }
-    private static func dayBefore(_ value: String) -> String {
-        guard let date = try? Dates.parse(value) else { return value }
-        return Dates.stamp(date.addingTimeInterval(-86400))
+    private static func shiftDay(_ value: String, by days: Int, timezone: String) throws -> String {
+        guard let zone = TimeZone(identifier:timezone) else { throw CompanionError("Unknown timezone") }
+        var calendar = Calendar(identifier:.gregorian); calendar.timeZone = zone
+        guard let shifted = calendar.date(byAdding:.day,value:days,to:try Dates.parse(value)) else { throw CompanionError("Invalid calendar date") }
+        return Dates.stamp(shifted)
     }
     private static func rule(_ row: [String: JSONValue]) -> String {
         guard let frequency = row["recurrence_frequency"]?.text, !frequency.isEmpty else { return "" }
@@ -262,6 +295,8 @@ struct Graph: Codable, Equatable, Identifiable {
         }
         if kind == "event" {
             guard !text("calendar_id").isEmpty else { throw CompanionError("Choose a calendar before saving") }
+            guard TimeZone(identifier:text("timezone")) != nil else { throw CompanionError("Unknown timezone") }
+            guard !text("ics_uid").isEmpty else { throw CompanionError("Event needs a stable ICS UID") }
             guard try Dates.parse(text("end_at")) > Dates.parse(text("start_at")) else { throw CompanionError("End must follow start") }
             _ = try Recurrence(text("recurrence"))
         }

@@ -1,4 +1,50 @@
-# Xcode Simulator verification — 6 October 2026
+# Xcode Simulator verification
+
+## Companion baseline release gate — 7 October 2026
+
+This evidence covers the companion-only source revision below. The combined
+`feat/iphone-full-interface` branch needs a fresh Simulator and IPA release
+gate before it can be treated as current release evidence.
+
+Tested mobile code commit: `51474b7bb51ecfe34c86a506e15dfe4775c92d3c`.
+
+[Successful release-gate run](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37539495753)
+(run ID `37539495753`). The generated-project consistency check passed. The
+Simulator job used macOS 15.7.9, Xcode 16.4 (16F6), and an iPhone 16 Pro
+Simulator on iOS 18.5; all 16 XCTest cases passed with zero failures. The
+unsigned-device job used macOS 26.6.2 and Xcode 26.6 (17F113), built the Release
+app for generic iPhone hardware, confirmed the bundle identifier
+`com.bigbenkenobi.tinker-companion`, and rejected any code signature before
+packaging.
+
+Downloaded artifact:
+`dist/TinkerCompanion-unsigned-51474b7-run-37539495753.ipa`
+
+- Size: 490,134 bytes
+- SHA-256: `5c359e4f1ea3fb878cd82f764097d6ece021897da9e6f82eabd21ded38c18544`
+- Local verification: ZIP integrity passed, bundle identifier matched, and no
+  `_CodeSignature` directory was present.
+
+The first run of this release gate exposed a Swift definite-initialization error
+in event-exception projection. Commit `51474b7bb51ecfe34c86a506e15dfe4775c92d3c`
+contains the focused correction and is the only source revision represented by
+the successful evidence above. Later evidence-only commits do not change the
+tested Swift sources or generated project. Physical iPhone installation,
+networking, permissions, notifications, and manual UI acceptance remain pending.
+
+Relevant runner log excerpt:
+
+```text
+2026-10-06T22:16:22Z macOS 15.7.9; runner image macos-15-arm64
+2026-10-06T22:16:24Z macOS 26.6.2; runner image macos-26-arm64
+2026-10-06T22:16:24Z Xcode 16.4; Build version 16F6
+2026-10-06T22:16:28Z Xcode 26.6; Build version 17F113
+2026-10-06T22:16:48Z iPhone 16 Pro Simulator; iOS 18.5
+2026-10-06T22:18:35Z Executed 16 tests, with 0 failures (0 unexpected)
+2026-10-06T22:18:36Z TEST SUCCEEDED
+```
+
+## Previous baseline — 6 October 2026
 
 Tested mobile code commit: `f84d5c02f3f9017e5f506a47a45c871a25ffff83`.
 

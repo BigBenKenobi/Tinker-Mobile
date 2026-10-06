@@ -1,6 +1,7 @@
 # Full-interface verification
 
-Status: native build and automated regression pass on both phone sizes.
+Status: historical native build and automated regression pass on both phone sizes;
+the integrated full-interface branch requires a fresh release gate.
 Original-reference comparison and physical-device acceptance remain pending.
 The final run, screenshot review and exact IPA source are recorded in
 [draft PR 2](https://github.com/BigBenKenobi/Tinker-Mobile/pull/2).
