@@ -148,13 +148,14 @@ struct Graph: Codable, Equatable, Identifiable {
                      notification_owner:row["notification_owner"]?.text ?? "phone", completed:row["completed"]?.flag ?? false)
         }
         let exceptionRows: [[String: JSONValue]] = try c.decode([[String: JSONValue]].self, forKey: .exceptions)
+        let projectedRecord = record
         exceptions = try exceptionRows.map { (row: [String: JSONValue]) -> EventException in
             let original = row["original_start"]?.text ?? ""
             let replacement = row["replacement_json"]?.text ?? ""
             let object = (try? JSONDecoder().decode([String: JSONValue].self, from:Data(replacement.utf8))) ?? [:]
-            let timezone = record["timezone"]?.text ?? "UTC"
+            let timezone = projectedRecord["timezone"]?.text ?? "UTC"
             let replacementTimezone = object["timezone_name"]?.text ?? timezone
-            let replacementAllDay = object["all_day"]?.flag ?? record["all_day"]?.flag ?? false
+            let replacementAllDay = object["all_day"]?.flag ?? projectedRecord["all_day"]?.flag ?? false
             let start = try object["start"].map { try Self.instant($0.text,timezone:replacementTimezone) }
             let nativeEnd = try object["end"].map { try Self.instant($0.text,timezone:replacementTimezone) }
             let end: String?
