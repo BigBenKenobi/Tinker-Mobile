@@ -1,6 +1,9 @@
 # Full-interface verification
 
-Status: implementation present; native and visual acceptance pending.
+Status: native build and automated regression pass on both phone sizes.
+Original-reference comparison and physical-device acceptance remain pending.
+The final run, screenshot review and exact IPA source are recorded in
+[draft PR 2](https://github.com/BigBenKenobi/Tinker-Mobile/pull/2).
 Source: feat/iphone-full-interface, based on mobile
 12e12e1413e838bb254953b1d7dca9334ffa3e30 and desktop reference
 b49b68bc6e4da6b3b5f0a3fc5c42b2c75435c39a.
@@ -11,9 +14,9 @@ b49b68bc6e4da6b3b5f0a3fc5c42b2c75435c39a.
 | Swift tree-sitter grammar | 31 sources, zero grammar errors; no type/API/link validation |
 | Desktop theme reference | 8 tests passed |
 | Desktop companion/recurrence/ICS reference | 10 tests passed |
-| Native unit tests | 24 passed on each Simulator in run 37457168704 (SHA 3d2a2af) |
-| Xcode build / UI regression | Xcode 16.4 builds on small and large iPhone Simulators; 2 of 4 UI tests failed per target in run 37457168704; fixes and diagnostic collection running |
-| Final unsigned IPA | Not built |
+| Native unit tests | 24 passed per device in run 37459091197 (SHA 3d3994e) |
+| Xcode build / UI regression | Xcode 16.4 / iOS 18.5; 4 UI tests passed per device in run 37459091197; SE 3 and 16 Pro Max |
+| Unsigned device IPA | Xcode 26 build passed in run 37459091197; ZIP CRC, arm64 binary, bundle ID, minimum iOS and absent code signature verified; final source receipt linked from PR |
 | Original screenshot parity | Reference media absent from desktop checkout |
 | Physical iPhone acceptance | Pending |
 
@@ -30,9 +33,17 @@ New iOS tests cover phone-only persistence, duplicate/malformed imports, palette
 round trips/defaults/contrast, isolated sync, NZ DST and task projections.
 Existing native regressions remain in the scheme. UI tests add retained/restart
 draft checks, fixture launches and screenshots. Native builds and unit tests have executed on GitHub macOS runners.
-Run 37457168704 executed 28 tests per device: 26 passed, 2 failed, zero
-skipped or expected failures. This is diagnosed intermediate evidence, not
-full UI acceptance. GitHub API and artifact download access now work.
+Run 37459091197 executed 28 tests per device: 28 passed, zero failed,
+skipped or expected failures. The scheme includes the 24 unit regressions and
+four UI cases. GitHub API and artifact download access work. Calendar rotation
+originally failed in UIKit's self-sizing collection layout; moving the calendar
+grid to a scrollable panel stack resolved the native crash. Drawer tests require
+fully visible targets, including at accessibility XXXL.
+
+This passing run produced 39 attachments per device. Application-bound
+landscape screenshots had incorrect cropping; the final capture suite uses
+full-device screenshots. The final source, artifacts and visual review are
+recorded in PR 2 so the release evidence remains tied to an actual run.
 
 Run .github/workflows/ios.yml on this branch or run the shared scheme on a Mac.
 Both small and large Simulator jobs must pass before native readiness is claimed.

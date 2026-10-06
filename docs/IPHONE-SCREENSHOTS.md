@@ -1,21 +1,27 @@
 # Screenshot index
 
-Status: intermediate screenshot evidence downloaded and inspected from run
-37457168704, SHA 3d2a2af, Xcode 16.4 / iPhone 16 Pro Max.
-Portrait forest/monospace styling is present. Landscape captures include
-incomplete layout and a startup error; the set is not accepted.
-Final complete small/large captures remain pending.
-The UI target emits persistent XCTest attachments inside the workflow's
-xcode-results-small and xcode-results-large artifacts.
+Native capture suite: all 18 canonical destinations on iPhone SE 3 and
+16 Pro Max, portrait and landscape, plus retained Home draft and labelled
+populated/error Notes at accessibility XXXL. The passing implementation run
+[37459091197](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37459091197)
+(SHA 3d3994e, Xcode 16.4 / iOS 18.5) produced 39 attachments per device.
 
-| Test | Expected attachment naming | Intended coverage | Evidence |
-|---|---|---|---|
-| testDestinationScreenshots | Destination-[route]-portrait/landscape | All 18 destinations, two orientations | Intermediate / incomplete |
-| testComposerSurvivesNavigation | Home-retained-draft | Temporary draft retention | Intermediate / incomplete |
-| testPopulatedAndErrorFixturesWithLargeText | populated/error-Notes-accessibility-XXXL | Labelled fixtures, large text | Intermediate / incomplete |
+The current UI suite captures the full device screen to avoid the incorrect
+landscape rectangle transforms seen with application-bound captures.
+The exact final commit, artifact links and completed visual review are recorded
+in [draft PR 2](https://github.com/BigBenKenobi/Tinker-Mobile/pull/2).
 
-After CI: download actual result bundles, inspect attachments, record the tested
-SHA and device/runtime, add artifact links and compare with original references.
-Themes, sheets, keyboard transitions, VoiceOver, Reduce Motion, Low Power Mode
-and battery behavior require additional native checks. This index does not
-claim that the screenshot tests provide complete visual acceptance.
+| Test | Attachment naming | Coverage |
+|---|---|---|
+| testDestinationScreenshots | Destination-[route]-portrait/landscape | All 18 destinations, 36 images per device |
+| testComposerSurvivesNavigation | Home-retained-draft | Temporary draft retention, one image |
+| testPopulatedAndErrorFixturesWithLargeText | populated/error-Notes-accessibility-XXXL | Labelled fixtures, two images |
+
+Artifacts are xcode-results-small and xcode-results-large and include exported
+images, their manifest, actual XCTest counts, logs and the result bundle. Images
+are isolated test fixtures with disposable stores, never production records.
+
+Original desktop screenshot references are absent from the desktop checkout.
+Simulator captures do not establish reference parity, physical installation,
+Files picker behavior, VoiceOver, Low Power Mode or battery acceptance. Those
+remain part of the consolidated final phone session; keep the PR unmerged.

@@ -1,6 +1,7 @@
 // Simulator acceptance of the isolated presentation shell. Each test owns a new
 // temporary SQLite store and never loads Keychain, networking or notifications.
-// Screenshots are XCTest attachments; their existence is not visual acceptance.
+// Full-device screenshots avoid application-rectangle crop transforms during
+// landscape capture. Their existence is not visual acceptance.
 import XCTest
 import UIKit
 
@@ -56,7 +57,7 @@ import UIKit
         XCTAssertTrue(app.navigationBars["Notes"].waitForExistence(timeout:5))
         navigate("new_chat",in:app)
         XCTAssertEqual(composer.value as? String,"Temporary acceptance draft")
-        let attachment = XCTAttachment(screenshot:app.screenshot())
+        let attachment = XCTAttachment(screenshot:XCUIDevice.shared.screenshot())
         attachment.name = "Home-retained-draft"; attachment.lifetime = .keepAlways
         add(attachment)
     }
@@ -77,7 +78,7 @@ import UIKit
             navigate(route,in:app)
             for orientation in [UIDeviceOrientation.portrait,.landscapeLeft] {
                 rotate(orientation,in:app)
-                let attachment = XCTAttachment(screenshot:app.screenshot())
+                let attachment = XCTAttachment(screenshot:XCUIDevice.shared.screenshot())
                 attachment.name = "Destination-" + route + (orientation == .portrait ? "-portrait" : "-landscape")
                 attachment.lifetime = .keepAlways; add(attachment)
             }
@@ -95,7 +96,7 @@ import UIKit
                 for _ in 0..<8 where !note.isHittable { app.swipeUp() }
                 XCTAssertTrue(note.isHittable,"Populated note must remain reachable at large text")
             }
-            let attachment = XCTAttachment(screenshot:app.screenshot())
+            let attachment = XCTAttachment(screenshot:XCUIDevice.shared.screenshot())
             attachment.name = fixture + "-Notes-accessibility-XXXL"; attachment.lifetime = .keepAlways; add(attachment)
             app.terminate()
         }
