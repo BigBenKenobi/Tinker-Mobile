@@ -18,8 +18,8 @@ struct GraphEditor: View {
     @State private var editingException: EventException?
     @State private var addException = false
     /// Each sheet owns a graph copy; compare against the opening draft before discard.
-    init(model: AppModel, graph: Graph, revision: Int) {
-        self.model = model; self.revision = revision; initialGraph = graph
+    init(model: AppModel, graph: Graph, token: EditToken) {
+        self.model = model; self.token = token; initialGraph = graph
         _graph = State(initialValue:graph)
     }
     private func text(_ key: String) -> Binding<String> { Binding(get:{ graph.text(key) },set:{ graph.set(key,$0) }) }
