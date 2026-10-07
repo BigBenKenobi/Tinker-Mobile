@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      simulator_tests:
+        description: Run the Simulator regression suite
+        type: boolean
+        default: true
       full_capture:
         description: Run all UI cases and retain full screenshot evidence
         type: boolean
@@ -16,10 +20,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ios-${{ github.ref }}
+  group: ios-${{ github.head_ref || github.ref_name }}-${{ github.event_name == 'workflow_dispatch' && 'acceptance' || 'regression' }}
   cancel-in-progress: true
 jobs:
   simulator:
+    if: github.event_name != 'workflow_dispatch' || inputs.simulator_tests
     runs-on: macos-15
     timeout-minutes: 30
     env:
