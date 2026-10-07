@@ -1,5 +1,7 @@
 name: iPhone companion
 on:
+  push:
+    branches: [ui/minimal-chat-sync-status]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -80,7 +82,7 @@ jobs:
             ${{ runner.temp }}/tinker-diagnostics
           retention-days: 3
   unsigned-device-ipa:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/ui/minimal-chat-sync-status')
     runs-on: macos-26
     timeout-minutes: 25
     steps:
