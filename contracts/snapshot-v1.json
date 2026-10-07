@@ -1,0 +1,92 @@
+{
+  "conflicts": [],
+  "cursor": 3,
+  "records": [
+    {
+      "id": "event_fixture",
+      "kind": "event",
+      "revision": 3,
+      "value": {
+        "exceptions": [
+          {
+            "cancelled": true,
+            "end_at": null,
+            "event_id": "event_fixture",
+            "id": "exception_fixture",
+            "occurrence_at": "2026-10-02T09:00:00Z",
+            "start_at": null,
+            "title": null
+          }
+        ],
+        "kind": "event",
+        "record": {
+          "all_day": false,
+          "created_at": "2026-10-01T00:00:00Z",
+          "description": "line one\nline two, escaped; \\",
+          "end_at": "2026-10-01T10:00:00Z",
+          "id": "event_fixture",
+          "location": "Auckland",
+          "metadata_json": "{}",
+          "recurrence": "FREQ=DAILY;COUNT=5",
+          "start_at": "2026-10-01T09:00:00Z",
+          "timezone": "Pacific/Auckland",
+          "title": "Calendar café",
+          "updated_at": "2026-10-01T00:00:00Z"
+        },
+        "reminders": [
+          {
+            "completed": false,
+            "fire_at": "2026-10-01T08:45:00Z",
+            "id": "reminder_fixture",
+            "message": "Remember",
+            "notification_owner": "phone",
+            "owner_id": "event_fixture",
+            "owner_kind": "event"
+          }
+        ]
+      }
+    },
+    {
+      "id": "note_fixture",
+      "kind": "note",
+      "revision": 1,
+      "value": {
+        "exceptions": [],
+        "kind": "note",
+        "record": {
+          "archived": false,
+          "body": "Offline notes",
+          "created_at": "2026-10-01T00:00:00Z",
+          "id": "note_fixture",
+          "metadata_json": "{}",
+          "pinned": false,
+          "title": "Note fixture",
+          "updated_at": "2026-10-01T00:00:00Z"
+        },
+        "reminders": []
+      }
+    },
+    {
+      "id": "task_fixture",
+      "kind": "task",
+      "revision": 2,
+      "value": {
+        "exceptions": [],
+        "kind": "task",
+        "record": {
+          "created_at": "2026-10-01T00:00:00Z",
+          "description": "Offline tasks",
+          "due_at": "2026-10-06T00:00:00Z",
+          "id": "task_fixture",
+          "metadata_json": "{}",
+          "status": "pending",
+          "title": "Task fixture",
+          "updated_at": "2026-10-01T00:00:00Z"
+        },
+        "reminders": []
+      }
+    }
+  ],
+  "server_id": "desktop_fixture",
+  "version": 1
+}

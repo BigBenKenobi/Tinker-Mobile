@@ -1,30 +1,70 @@
 # Tinker for iPhone
 
-Native SwiftUI iPhone companion for Tinker on Fedora: offline Notes, Tasks and
-Calendar in SQLite, with paired HTTPS synchronization on the same local network.
-Requires iOS 17 or later. The application is under review and has not yet been
-accepted into the default branch.
+Review stack: [companion PR #1](https://github.com/BigBenKenobi/Tinker-Mobile/pull/1)
+→ [interface PR #2](https://github.com/BigBenKenobi/Tinker-Mobile/pull/2)
+→ [integrated candidate PR #3](https://github.com/BigBenKenobi/Tinker-Mobile/pull/3).
+The application remains unaccepted; see the candidate
+[status record](https://github.com/BigBenKenobi/Tinker-Mobile/blob/ui/minimal-chat-sync-status/docs/STATUS.md)
+for current source/evidence and physical gates.
 
-## Active review stack
+Native SwiftUI iPhone companion, iOS 17+. Notes, Tasks and Calendar use an on-device
+SQLite store and durable offline edits. Sync is local-network only, with the
+Fedora desktop app open. No hosted runtime, account or model service is used.
 
-1. [PR #1 — companion baseline](https://github.com/BigBenKenobi/Tinker-Mobile/pull/1),
-   branch `feat/iphone-companion-m1`, includes local-save and ICS data-safety fixes.
-2. [Draft PR #2 — full interface](https://github.com/BigBenKenobi/Tinker-Mobile/pull/2),
-   branch `feat/iphone-full-interface`, depends on the companion baseline.
-3. [Draft PR #3 — integrated acceptance candidate](https://github.com/BigBenKenobi/Tinker-Mobile/pull/3),
-   branch `ui/minimal-chat-sync-status`, includes the minimal Home, recovery exports,
-   build identification, durable validation evidence and quiet-work improvements.
+## Build and run
 
-To inspect/build the integrated candidate, clone this repository and check out
-`ui/minimal-chat-sync-status`. Follow its
-[build guide](https://github.com/BigBenKenobi/Tinker-Mobile/blob/ui/minimal-chat-sync-status/README.md),
-[current status](https://github.com/BigBenKenobi/Tinker-Mobile/blob/ui/minimal-chat-sync-status/docs/STATUS.md),
-and [physical acceptance checklist](https://github.com/BigBenKenobi/Tinker-Mobile/blob/ui/minimal-chat-sync-status/docs/PHYSICAL-ACCEPTANCE.md).
-The matching desktop dependency is [Tinker PR #11](https://github.com/BigBenKenobi/Tinker/pull/11).
+Open `ios/TinkerCompanion.xcodeproj` on a Mac with Xcode supporting iOS 17+, select
+the `TinkerCompanion` scheme and an iPhone Simulator, then Run or Test. The project
+is checked in and requires no XcodeGen or third-party iOS packages. For a physical
+iPhone, choose your signing team and device in Xcode. A personal development install
+uses Apple's signing rules; no App Store release is part of this milestone.
 
-CI results apply to their exact source commits. An unsigned IPA, screenshot export
-or Simulator pass does not establish physical acceptance. Application branches
-remain unmerged until acceptance is approved. Preserve their ancestry through
-normal merge commits, update dependent review bases, and validate each proposed
-merge before retiring branches. The default branch will contain the application
-after that process; this README makes the current state explicit in the meantime.
+```sh
+xcodebuild -project ios/TinkerCompanion.xcodeproj \
+  -scheme TinkerCompanion \
+  -destination 'platform=iOS Simulator,name=<installed iPhone simulator>' \
+  CODE_SIGNING_ALLOWED=NO test
+```
+
+Regenerate file references after adding Swift files with
+`python3 scripts/generate_xcode_project.py`. The repository includes a macOS
+Simulator CI workflow; its result is separate from physical-device acceptance.
+
+## Pair with Fedora
+
+1. Use Tinker's matching `feat/iphone-companion-m1` desktop branch and install its
+   requirements (`python3 -m pip install -r requirements.txt` in a virtual environment).
+2. Open **iPhone Companion**, enter the Fedora LAN IPv4 address, and start local
+   sync. The selected address is remembered and restarted while Tinker is open.
+   Allow the displayed TCP port in your Fedora LAN firewall if necessary; no
+   public forwarding or remote tunnel is used. The port may change on restart;
+   Bonjour discovery updates the phone's address while retaining certificate trust.
+3. Show the two-minute pairing QR. On the phone open **Companion → Scan desktop
+   pairing QR** and grant camera/local-network access. Grant notifications separately.
+4. Create/edit/delete items offline. Open/foreground the phone on the same Wi-Fi
+   to sync; it checks again every 15 seconds while active. Inspect pending edits and
+   conflicts in Companion. Background refresh is best effort.
+
+Unpair on the old phone before revoking/replacing it in Fedora; this cancels its
+pending notifications. Local items and offline edits are retained after unpair.
+The first milestone supports one paired phone and one desktop identity per store.
+A changed certificate or another desktop is rejected; recovering a restored store
+or changing desktops requires an explicit migration/recovery workflow, not an
+automatic destructive reset.
+
+## Scope and acceptance
+
+Notes: create/edit/delete, search, pinned/archive state, linked reminders.
+Tasks: create/edit/delete, search, status/completion, due dates, linked reminders.
+Calendar: native date selection, day agenda, search, create/edit/delete, supported
+recurrence and per-occurrence changes, linked reminders, Files ICS import/export.
+Conflicts preserve complete versions and require an explicit choice.
+
+The recurrence/ICS subset and reminder budgets are documented in
+[the shared sync contract](contracts/SYNC-v2.md). Full RFC5545, iPad layouts, chat,
+other workspaces, animated desktop themes, hosted sync and remote models are later
+milestones. OS notifications cannot guarantee delivery of changes not yet synced.
+
+See [acceptance](docs/ACCEPTANCE.md) for verified checks and pending gates. Linux
+cannot compile/test UIKit, SwiftUI, Keychain, VisionKit, Bonjour permissions or
+physical notifications. Do not treat syntax parsing as an iOS build.

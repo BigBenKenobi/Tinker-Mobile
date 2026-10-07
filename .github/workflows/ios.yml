@@ -1,0 +1,96 @@
+name: iPhone companion
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    strategy:
+      fail-fast: false
+      matrix:
+        phone: [small, large]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify generated Xcode project is current
+        run: |
+          python3 scripts/generate_xcode_project.py
+          git diff --exit-code -- ios/TinkerCompanion.xcodeproj
+      - name: Pick an available iPhone Simulator
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available -j > /tmp/tinker-simulators.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('/tmp/tinker-simulators.json'))
+          devices = [d for runtime, values in data['devices'].items() if '.iOS-' in runtime for d in values if d['name'].startswith('iPhone')]
+          preferred = 'iPhone SE (3rd generation)' if '${{ matrix.phone }}' == 'small' else 'iPhone 16 Pro Max'
+          devices = [d for d in devices if d['name'] == preferred]
+          if not devices:
+              raise SystemExit('Required Simulator missing: ' + preferred)
+          print('Selected Simulator:', devices[0]['name'])
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('TINKER_SIMULATOR_ID=' + devices[0]['udid'] + '\n')
+          PY
+      - name: Build and test native iPhone app
+        run: |
+          xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test
+      - name: Preserve Xcode results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-results-${{ matrix.phone }}
+          path: /tmp/TinkerCompanion.xcresult
+          retention-days: 14
+  unsigned-device-ipa:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Confirm Xcode 26 toolchain
+        run: |
+          xcodebuild -version > "$RUNNER_TEMP/xcode-version.txt"
+          cat "$RUNNER_TEMP/xcode-version.txt"
+          grep -q '^Xcode 26\.' "$RUNNER_TEMP/xcode-version.txt"
+      - name: Build unsigned iPhone app
+        run: |
+          xcodebuild -project ios/TinkerCompanion.xcodeproj \
+            -scheme TinkerCompanion -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/tinker-device-build" \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Package SideStore IPA
+        run: |
+          app="$RUNNER_TEMP/tinker-device-build/Build/Products/Release-iphoneos/TinkerCompanion.app"
+          test -d "$app"
+          bundle_id=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")
+          test "$bundle_id" = 'com.bigbenkenobi.tinker-companion'
+          if codesign -dv "$app" >/dev/null 2>&1; then
+            echo 'Expected an unsigned device app' >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/tinker-ipa/Payload"
+          cp -R "$app" "$RUNNER_TEMP/tinker-ipa/Payload/"
+          cd "$RUNNER_TEMP/tinker-ipa"
+          zip -qry "$RUNNER_TEMP/TinkerCompanion-unsigned.ipa" Payload
+      - name: Retain unsigned IPA briefly
+        uses: actions/upload-artifact@v4
+        with:
+          name: TinkerCompanion-unsigned-device-ipa
+          path: ${{ runner.temp }}/TinkerCompanion-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,151 @@
+{
+  "version": 2,
+  "cursor": 4,
+  "records": [
+    {
+      "kind": "calendar",
+      "id": "f6b0f85b-453a-45d2-9778-edd28488ae8f",
+      "revision": 1,
+      "value": {
+        "activity": [],
+        "exceptions": [],
+        "kind": "calendar",
+        "linked_task": null,
+        "record": {
+          "color": "#729240",
+          "id": "f6b0f85b-453a-45d2-9778-edd28488ae8f",
+          "name": "Personal",
+          "sort_order": 0,
+          "visible": true
+        },
+        "reminders": []
+      }
+    },
+    {
+      "kind": "event",
+      "id": "event_fixture",
+      "revision": 2,
+      "value": {
+        "activity": [],
+        "exceptions": [
+          {
+            "event_id": "event_fixture",
+            "kind": "cancelled",
+            "original_start": "datetime:2026-10-02T09:00:00+00:00",
+            "replacement_json": null
+          }
+        ],
+        "kind": "event",
+        "linked_task": null,
+        "record": {
+          "all_day": false,
+          "calendar_id": "f6b0f85b-453a-45d2-9778-edd28488ae8f",
+          "created_at": "2026-10-01",
+          "end_value": "datetime:2026-10-01T10:00:00+00:00",
+          "ics_uid": "event_fixture@tinker",
+          "id": "event_fixture",
+          "location": "",
+          "notes": "",
+          "recurrence_count": 5,
+          "recurrence_frequency": "DAILY",
+          "recurrence_interval": 1,
+          "recurrence_until": null,
+          "recurrence_weekdays": "[]",
+          "start_value": "datetime:2026-10-01T09:00:00+00:00",
+          "timezone_name": "UTC",
+          "title": "Series",
+          "updated_at": "2026-10-01"
+        },
+        "reminders": [
+          {
+            "completed": false,
+            "event_id": "event_fixture",
+            "fire_at": "2026-10-01T08:45:00+00:00",
+            "id": "alarm_fixture",
+            "message": "Alarm",
+            "notification_owner": "phone"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "note",
+      "id": "note_fixture",
+      "revision": 3,
+      "value": {
+        "activity": [
+          {
+            "created_at": "2026-10-02T09:00:00+00:00",
+            "detail": "Reminder due",
+            "id": "activity_fixture",
+            "occurrence_at": "2026-10-02T09:00:00+00:00",
+            "task_id": "linked_fixture"
+          }
+        ],
+        "exceptions": [],
+        "kind": "note",
+        "linked_task": {
+          "created_at": "2026-10-01",
+          "description": "",
+          "due_at": "2026-10-07T09:00:00+00:00",
+          "id": "linked_fixture",
+          "kind": "reminder",
+          "last_fired_at": null,
+          "metadata_json": "{}",
+          "note_id": "note_fixture",
+          "notification_owner": "phone",
+          "paused": false,
+          "recurrence": "none",
+          "recurrence_anchor": null,
+          "status": "pending",
+          "timezone_name": "UTC",
+          "title": "Linked alarm",
+          "updated_at": "2026-10-01"
+        },
+        "record": {
+          "archived": false,
+          "body": "Offline text",
+          "created_at": "2026-10-01",
+          "id": "note_fixture",
+          "metadata_json": "{}",
+          "pinned": false,
+          "title": "A note",
+          "updated_at": "2026-10-01"
+        },
+        "reminders": []
+      }
+    },
+    {
+      "kind": "task",
+      "id": "task_fixture",
+      "revision": 4,
+      "value": {
+        "activity": [],
+        "exceptions": [],
+        "kind": "task",
+        "linked_task": null,
+        "record": {
+          "created_at": "2026-10-01",
+          "description": "",
+          "due_at": null,
+          "id": "task_fixture",
+          "kind": "todo",
+          "last_fired_at": null,
+          "metadata_json": "{}",
+          "note_id": null,
+          "notification_owner": "desktop",
+          "paused": false,
+          "recurrence": "none",
+          "recurrence_anchor": null,
+          "status": "pending",
+          "timezone_name": "UTC",
+          "title": "Independent task",
+          "updated_at": "2026-10-01"
+        },
+        "reminders": []
+      }
+    }
+  ],
+  "conflicts": [],
+  "server_id": "desktop_fixture"
+}
