@@ -8,11 +8,11 @@ The first release pairs one phone on the same Wi-Fi. Protocol two deliberately r
 
 ## Build the IPA after code changes
 
-1. Open **Actions → iPhone companion → Run workflow** in the Tinker-Mobile GitHub repository. Choose the branch containing the matching protocol-two phone code. The Simulator job and the manual `unsigned-device-ipa` job will run. The device job verifies Xcode 26 and the bundle ID, builds for `generic/platform=iOS` with signing disabled, and uploads `TinkerCompanion-unsigned-device-ipa` for three days.
+1. Open **Actions → iPhone companion → Run workflow** in the Tinker-Mobile GitHub repository. Choose the branch containing the matching protocol-two phone code. Select **device_build** to request the unsigned IPA. Leave **simulator_tests** enabled for a fresh native regression run, or disable it when the same source already has passing native evidence. Select **full_capture** for all UI screenshots. The device job requires Xcode 26.6, preserves the bundle ID, embeds the source/build identity, and retains the IPA for 14 days and its payload manifest for 90 days.
 2. Download the artifact zip to Fedora and extract `TinkerCompanion-unsigned.ipa`. Do not upload an Apple Account, certificate, or provisioning profile to CI. GitHub Actions use for a private repository depends on its current allowance.
 3. Reuse the installed IPA for weekly signing refresh. Run this workflow again only after Tinker's code changes.
 
-[GitHub's macOS 26 runner image](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md) currently includes Xcode 26. The workflow checks the major version rather than silently building with a later Xcode.
+[GitHub's macOS 26 runner image](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md) currently includes Xcode 26. The candidate workflow requires Xcode 26.6 for the unsigned device build and Xcode 16.4/iOS 18.5 for routine Simulator validation. A toolchain change needs a reviewed workflow update.
 
 ## One-time Fedora and SideStore setup
 
@@ -23,9 +23,11 @@ The first release pairs one phone on the same Wi-Fi. Protocol two deliberately r
 
 On the current SideStore nightly, a pairing file can show **Configured** while **Preferred Protocol** still says **None**. If device registration then says no valid pairing file is loaded, press and hold the **Remote Pairing File** card in SideStore's Pairing File Management, choose **Set as Preferred**, reopen SideStore, and retry registration. Do not reset the configured files first. This follows SideStore's [pairing-file selection code](https://github.com/SideStore/SideStore/blob/develop/SideStore/Views/Settings/Advanced/PairingFile/PairingFileManagementView.swift) and was needed on the first iOS 27.0.1 install. Scan the desktop QR using **Tinker → Companion → Scan desktop pairing QR**; the ordinary iPhone Camera opens its link in a browser.
 
-## Real-device acceptance
+## Historical real-device acceptance — earlier build
 
 The minimum first-device cycle was completed on **6 October 2026** with iOS 27.0.1, SideStore nightly, and the [corrected protocol-two IPA build](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37421313209): the phone installed and paired with Fedora, a desktop note reached the phone, an independently created phone task survived an offline edit and reached the desktop, a phone-owned local reminder arrived, and manual refresh of both SideStore and Tinker retained the app, pairing, note, and task. Deleting the test note on the phone and the test task on the desktop then synced both deletions. The corrected IPA was installed over the earlier build using the same app identity. The desktop's isolated tests cover migration, conflicts, linked records, calendar events, and exceptions; those broader cases have not all been repeated on the physical phone.
+
+For current candidate acceptance use [the consolidated checklist](PHYSICAL-ACCEPTANCE.md). The earlier session below does not accept a new build.
 
 For later device regression checks:
 
