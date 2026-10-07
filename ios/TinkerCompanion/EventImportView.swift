@@ -54,6 +54,6 @@ struct EventImportView: View {
             try model.store.importEvents(plan)
             Task { await model.reconcileReminders(); await model.sync() }
             dismiss()
-        } catch { self.plan = nil; error = error.localizedDescription }
+        } catch { self.plan = nil; self.error = error.localizedDescription }
     }
 }
