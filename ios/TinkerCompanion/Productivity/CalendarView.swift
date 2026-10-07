@@ -26,6 +26,7 @@ struct CalendarView: View {
     }
     private var search: String { presentation.drafts["calendar.search"] ?? "" }
     private var mode: String { presentation.selections["calendar.mode"] ?? "Month" }
+    @StateObject private var occurrenceCache = CalendarOccurrenceCache()
     @State private var editing: RecordVersion?
     @State private var newItem = false
     @State private var importing = false
@@ -48,13 +49,12 @@ struct CalendarView: View {
         return events.filter { visibleIDs.contains($0.text("calendar_id")) }
     }
     private var expansion: (occurrences:[Occurrence], errors:[String]) {
-        var result: [Occurrence] = []; var errors: [String] = []
-        for graph in visibleEvents {
-            do { result += try Occurrence.expand(graph,lower:period.start,upper:period.end) }
-            catch { errors.append(graph.title + ": " + error.localizedDescription) }
-        }
-        return (result.sorted { $0.start < $1.start },errors)
+        let visible = Set(calendars.filter { $0.value?.flag("visible") == true }.map(\.id))
+        return occurrenceCache.projection(records:model.store.records,generation:model.store.recordGeneration,
+                                          calendars:visible,lower:period.start,upper:period.end,
+                                          timezone:TimeZone.current.identifier)
     }
+
     private var occurrences: [Occurrence] { expansion.occurrences }
     private var dueTasks: [ProjectedDueTask] { CalendarProjection.dueTasks(model.store.records,interval:period) }
 

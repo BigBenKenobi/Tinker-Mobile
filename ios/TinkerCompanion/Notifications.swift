@@ -100,37 +100,62 @@ enum NotificationPlanner {
     @Published private(set) var status = "Notifications have not been enabled"
     private let center = UNUserNotificationCenter.current()
     private let isolated: Bool
+    private var plannedGeneration: Int?
+    private var plannedAt: Date?
+
     /// Isolated UI fixtures never claim the notification-center delegate or permissions.
     init(isolated: Bool = false) { self.isolated = isolated; super.init(); if !isolated { center.delegate = self } }
     func authorize() async {
         guard !isolated else { return }
+        plannedGeneration = nil
         do { let allowed = try await center.requestAuthorization(options:[.alert,.sound,.badge]); status = allowed ? "Notifications enabled" : "Notifications are disabled in iPhone Settings" }
         catch { status = error.localizedDescription }
     }
     func cancelAll() async {
         guard !isolated else { return }
+        plannedGeneration = nil
         let ids = await center.pendingNotificationRequests().filter { $0.identifier.hasPrefix("tinker:") }.map(\.identifier)
         center.removePendingNotificationRequests(withIdentifiers:ids)
         center.removeAllDeliveredNotifications()
     }
-    func reconcile(_ records: [RecordVersion], now: Date = Date()) async throws {
+    func reconcile(_ records: [RecordVersion], generation: Int, now: Date = Date()) async throws {
         guard !isolated else { return }
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { status = "Enable notifications in iPhone Settings"; return }
+        // Renew the scheduling horizon at least once per minute. Domain changes,
+        // permission requests and cancellation invalidate this process-local cache.
+        if plannedGeneration == generation, let previous = plannedAt,
+           (0..<60).contains(now.timeIntervalSince(previous)) { return }
         // Finish the fallible plan before changing pending requests, so corrupt
         // local input cannot partially replace a previously valid schedule.
         let planned = try NotificationPlanner.plan(records,now:now)
         let ids = Set(planned.map(\.identifier))
-        let old = await center.pendingNotificationRequests().filter { $0.identifier.hasPrefix("tinker:") && !ids.contains($0.identifier) }.map(\.identifier)
+        let existing = await center.pendingNotificationRequests().filter { $0.identifier.hasPrefix("tinker:") }
+        let scheduled = existing.compactMap { request -> PlannedNotification? in
+            guard let trigger = request.trigger as? UNCalendarNotificationTrigger,
+                  !trigger.repeats, let date = trigger.nextTriggerDate(), request.content.sound != nil else { return nil }
+            return PlannedNotification(identifier:request.identifier,date:date,title:request.content.title,message:request.content.body)
+        }
+        let old = existing.filter { !ids.contains($0.identifier) }.map(\.identifier)
         center.removePendingNotificationRequests(withIdentifiers:old)
-        for item in planned {
+        for item in Self.changedRequests(planned,scheduled:scheduled) {
             let content = UNMutableNotificationContent(); content.title = item.title.isEmpty ? "Tinker reminder" : item.title; content.body = item.message; content.sound = .default
             var calendar = Calendar(identifier:.gregorian); calendar.timeZone = TimeZone(secondsFromGMT:0)!
             var components = calendar.dateComponents([.year,.month,.day,.hour,.minute,.second],from:item.date); components.timeZone = calendar.timeZone
             let trigger = UNCalendarNotificationTrigger(dateMatching:components,repeats:false)
             try await center.add(UNNotificationRequest(identifier:item.identifier,content:content,trigger:trigger))
         }
+        plannedGeneration = generation; plannedAt = now
         status = "\(planned.count) upcoming phone reminders scheduled"
+    }
+    /// Compare desired content with actual OS requests, so unchanged requests
+    /// survive quiet refreshes and a failed add is retried on the next cycle.
+    static func changedRequests(_ planned: [PlannedNotification], scheduled: [PlannedNotification]) -> [PlannedNotification] {
+        let existing = Dictionary(scheduled.map { ($0.identifier,$0) },uniquingKeysWith:{ _,new in new })
+        return planned.filter { item in
+            let title = item.title.isEmpty ? "Tinker reminder" : item.title
+            return existing[item.identifier] != PlannedNotification(identifier:item.identifier,date:item.date,title:title,message:item.message)
+        }
     }
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner,.sound])

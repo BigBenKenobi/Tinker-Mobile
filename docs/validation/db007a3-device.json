@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "source_sha": "db007a3390c8a2ff25e511f615d4e5ff0b8f713c",
+  "build_inputs_sha256": "c2869b80aa8c1bb536117ee984e6cda0e9d4d9d25f9a52d7d4ff2107d846d454",
+  "protocol_version": 2,
+  "desktop_schema_version": 5,
+  "kind": "unsigned-device",
+  "run_id": "37647505368",
+  "run_attempt": "1",
+  "build_number": "59",
+  "toolchain": "Xcode 26.6\nBuild version 17F113",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "full_capture_requested": false,
+  "visual_review": "pending",
+  "physical_acceptance": "pending",
+  "contract_sha256": "33f106af45298e80c7776875b7a4281d0d571f432573c98c839ee8d2d1f703af",
+  "fixture_sha256": "b23a56b2a59a820a2cfb3cfa56a251bb38bc3296d74616ff99ed26e0573228c5",
+  "payload_sha256": "e6cf310924a79d1b7037eb1177075648801e84359dc3949123b25aeeb99573bb",
+  "payload_bytes": 962462
+}

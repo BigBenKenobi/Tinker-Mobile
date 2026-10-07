@@ -1,0 +1,18 @@
+{
+  "source_sha": "db007a3390c8a2ff25e511f615d4e5ff0b8f713c",
+  "run_id": 37647511855,
+  "samples": {
+    "small": [
+      "TINKER_BENCHMARK calendar records=1000 cold_seconds=0.012717008590698242 cached_100_seconds=0.0002720355987548828",
+      "TINKER_BENCHMARK calendar records=10000 cold_seconds=0.00825202465057373 cached_100_seconds=0.0002570152282714844",
+      "TINKER_BENCHMARK empty_pull records=1000 cycles=100 seconds=0.004405975341796875 publications=0",
+      "TINKER_BENCHMARK empty_pull records=10000 cycles=100 seconds=0.0021469593048095703 publications=0"
+    ],
+    "large": [
+      "TINKER_BENCHMARK calendar records=1000 cold_seconds=0.007193922996520996 cached_100_seconds=0.00029098987579345703",
+      "TINKER_BENCHMARK calendar records=10000 cold_seconds=0.00901496410369873 cached_100_seconds=0.00026297569274902344",
+      "TINKER_BENCHMARK empty_pull records=1000 cycles=100 seconds=0.0014380216598510742 publications=0",
+      "TINKER_BENCHMARK empty_pull records=10000 cycles=100 seconds=0.0021630525588989258 publications=0"
+    ]
+  }
+}
