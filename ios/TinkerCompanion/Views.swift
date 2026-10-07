@@ -72,22 +72,22 @@ struct DomainView: View {
         }.navigationTitle(kind == "note" ? "Notes" : "Tasks")
         .searchable(text:$search).refreshable { await model.sync() }
         .toolbar { Button { newItem = true } label: { Label("Create",systemImage:"plus") } }
-        .sheet(item:$editing) { row in NavigationStack { GraphEditor(model:model,graph:row.value!,revision:row.revision) } }
-        .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:Graph.new(kind),revision:0) } }
+        .sheet(item:$editing) { row in NavigationStack { GraphEditor(model:model,graph:row.value!,token:row.editToken) } }
+        .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:Graph.new(kind),token:.new) } }
         .confirmationDialog("Delete this item and its linked reminders?",isPresented:Binding(get:{ deleting != nil },set:{ if !$0 { deleting = nil } }),titleVisibility:.visible) {
             Button("Delete",role:.destructive) { if let row = deleting { do { try model.delete(row) } catch { model.error = error.localizedDescription } }; deleting = nil }
         }
     }
     private func complete(_ row: RecordVersion) {
         guard var graph = row.value else { return }; graph.set("status","completed"); graph.set("updated_at",Dates.stamp(Date()))
-        do { try model.save(graph,observedRevision:row.revision) } catch { model.error = error.localizedDescription }
+        do { try model.save(graph,expected:row.editToken) } catch { model.error = error.localizedDescription }
     }
 }
 
 struct GraphEditor: View {
     @ObservedObject var model: AppModel
     @State var graph: Graph
-    let revision: Int
+    let token: EditToken
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
     @State private var editingReminder: Reminder?
@@ -199,7 +199,7 @@ struct GraphEditor: View {
                 graph.set("end_at",Dates.stamp(max(calendar.startOfDay(for:end),calendar.date(byAdding:.day,value:1,to:calendar.startOfDay(for:start))!)))
             }
         }
-        do { try model.save(graph,observedRevision:revision); dismiss() } catch { self.error = error.localizedDescription }
+        do { try model.save(graph,expected:token); dismiss() } catch { self.error = error.localizedDescription }
     }
 }
 
@@ -305,6 +305,7 @@ struct CalendarView: View {
     @State private var editing: RecordVersion?
     @State private var newItem = false
     @State private var importing = false
+    @State private var importFile: ImportFile?
     @State private var exporting = false
     @State private var document = CalendarFile()
     @State private var deleting: RecordVersion?
@@ -355,19 +356,20 @@ struct CalendarView: View {
                 Button("Export ICS to Files") { do { document = CalendarFile(text:try ICS.export(events)); exporting = true } catch { model.error = error.localizedDescription } }
             } label: { Label("Calendar files",systemImage:"square.and.arrow.up") }
         }
-        .sheet(item:$editing) { r in NavigationStack { GraphEditor(model:model,graph:r.value!,revision:r.revision) } }
-        .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:draftEvent,revision:0) } }
-        .sheet(item:$editingCalendar) { r in NavigationStack { GraphEditor(model:model,graph:r.value!,revision:r.revision) } }
-        .sheet(isPresented:$newCalendar) { NavigationStack { GraphEditor(model:model,graph:Graph.new("calendar"),revision:0) } }
+        .sheet(item:$editing) { r in NavigationStack { GraphEditor(model:model,graph:r.value!,token:r.editToken) } }
+        .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:draftEvent,token:.new) } }
+        .sheet(item:$editingCalendar) { r in NavigationStack { GraphEditor(model:model,graph:r.value!,token:r.editToken) } }
+        .sheet(isPresented:$newCalendar) { NavigationStack { GraphEditor(model:model,graph:Graph.new("calendar"),token:.new) } }
         .fileImporter(isPresented:$importing,allowedContentTypes:CalendarFile.readableContentTypes) { result in
             do {
                 let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
                 let size = try url.resourceValues(forKeys:[.fileSizeKey]).fileSize ?? 0
                 guard size <= 4*1024*1024 else { throw CompanionError("ICS exceeds 4 MiB") }
                 let text = try String(contentsOf:url,encoding:.utf8).replacingOccurrences(of:"\u{FEFF}",with:"")
-                try model.store.importEvents(ICS.parse(text)); Task { await model.reconcileReminders(); await model.sync() }
+                importFile = ImportFile(graphs:try ICS.parse(text))
             } catch { model.error = error.localizedDescription }
         }
+        .sheet(item:$importFile) { file in NavigationStack { EventImportView(model:model,sources:file.graphs) } }
         .fileExporter(isPresented:$exporting,document:document,contentType:CalendarFile.readableContentTypes[0],defaultFilename:"Tinker.ics") { result in
             if case .failure(let error) = result { model.error = error.localizedDescription }
         }

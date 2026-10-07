@@ -98,15 +98,7 @@ struct ICS {
                 let fire: Date
                 if trigger.value.hasPrefix("-P") {
                     guard trigger.params["RELATED"] == nil || trigger.params["RELATED"] == "START" else { throw CompanionError("End-relative alarms are not supported") }
-                    let pattern = "^-P(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?$"
-                    let regex = try NSRegularExpression(pattern:pattern)
-                    let range = NSRange(trigger.value.startIndex...,in:trigger.value)
-                    guard let match = regex.firstMatch(in:trigger.value,range:range) else { throw CompanionError("Invalid alarm duration") }
-                    let values = (1...4).map { i -> Int in
-                        guard let r = Range(match.range(at:i),in:trigger.value) else { return 0 }; return Int(trigger.value[r]) ?? 0
-                    }
-                    guard values.contains(where:{ $0 > 0 }) else { throw CompanionError("Invalid alarm duration") }
-                    fire = start.addingTimeInterval(-Double(values[0]*86400 + values[1]*3600 + values[2]*60 + values[3]))
+                    fire = start.addingTimeInterval(-Double(try alarmDuration(trigger.value)))
                 } else { fire = try date(trigger,timezone:zone).0 }
                 g.reminders.append(Reminder(id:Dates.id("reminder"),owner_kind:"event",owner_id:g.id,fire_at:Dates.stamp(fire),message:unescape(a["DESCRIPTION"]?.first?.value ?? title)))
             }
@@ -125,6 +117,27 @@ struct ICS {
         }
         // The owning calendar is chosen by LocalStore after parsing succeeds.
         return bases.values.sorted { $0.id < $1.id }
+    }
+    /// Parse the supported negative day/time subset before Date arithmetic.
+    /// Checked operations reject overflow and malformed present components; the
+    /// explicit one-year bound also prevents unusable notification timestamps.
+    static func alarmDuration(_ text: String) throws -> Int {
+        let pattern = "^-P(?:([0-9]+)D)?(?:T(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?)?$"
+        let regex = try NSRegularExpression(pattern:pattern)
+        let range = NSRange(text.startIndex...,in:text)
+        guard let match = regex.firstMatch(in:text,range:range), match.range == range,
+              !text.hasSuffix("T") else { throw CompanionError("Invalid alarm duration") }
+        var total = 0
+        for (index,scale) in [86400,3600,60,1].enumerated() {
+            guard let component = Range(match.range(at:index + 1),in:text) else { continue }
+            guard let value = Int(text[component]) else { throw CompanionError("Alarm duration is too large") }
+            let product = value.multipliedReportingOverflow(by:scale)
+            let sum = total.addingReportingOverflow(product.partialValue)
+            guard !product.overflow, !sum.overflow else { throw CompanionError("Alarm duration is too large") }
+            total = sum.partialValue
+        }
+        guard (1...366*86400).contains(total) else { throw CompanionError("Alarm duration must be between one second and 366 days") }
+        return total
     }
     static func export(_ graphs: [Graph]) throws -> String {
         var lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Tinker//Companion 1//EN","CALSCALE:GREGORIAN"]

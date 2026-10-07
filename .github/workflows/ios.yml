@@ -1,5 +1,7 @@
 name: iPhone companion
 on:
+  push:
+    branches: [main, feat/iphone-companion-m1]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -10,7 +12,13 @@ concurrency:
 jobs:
   simulator:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    strategy:
+      fail-fast: false
+      matrix:
+        phone: [small, large]
     steps:
       - uses: actions/checkout@v4
       - name: Verify generated Xcode project is current
@@ -25,8 +33,11 @@ jobs:
           import json, os
           data = json.load(open('/tmp/tinker-simulators.json'))
           devices = [d for runtime, values in data['devices'].items() if '.iOS-' in runtime for d in values if d['name'].startswith('iPhone')]
+          preferred = 'iPhone SE (3rd generation)' if '${{ matrix.phone }}' == 'small' else 'iPhone 16 Pro Max'
+          devices = [d for d in devices if d['name'] == preferred]
           if not devices:
-              raise SystemExit('No iPhone Simulator installed')
+              raise SystemExit('Required Simulator missing: ' + preferred)
+          print('Selected Simulator:', devices[0]['name'])
           with open(os.environ['GITHUB_ENV'], 'a') as env:
               env.write('TINKER_SIMULATOR_ID=' + devices[0]['udid'] + '\n')
           PY
@@ -37,9 +48,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: xcode-results
+          name: xcode-results-${{ matrix.phone }}
           path: /tmp/TinkerCompanion.xcresult
-          retention-days: 3
+          retention-days: 14
   unsigned-device-ipa:
     if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
@@ -78,4 +89,4 @@ jobs:
           name: TinkerCompanion-unsigned-device-ipa
           path: ${{ runner.temp }}/TinkerCompanion-unsigned.ipa
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 14
