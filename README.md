@@ -1,5 +1,7 @@
 # Tinker for iPhone
 
+Current review stack and acceptance gates: [status record](https://github.com/BigBenKenobi/Tinker-Mobile/blob/ui/minimal-chat-sync-status/docs/STATUS.md). Application PRs remain unmerged pending acceptance.
+
 Native SwiftUI iPhone companion, iOS 17+. Notes, Tasks and Calendar use an on-device
 SQLite store and durable offline edits. Sync is local-network only, with the
 Fedora desktop app open. No hosted runtime, account or model service is used.
