@@ -81,8 +81,8 @@ import Combine
     private func json<T: Encodable>(_ value: T) throws -> String { String(decoding: try encoder.encode(value), as: UTF8.self) }
     private func decode<T: Decodable>(_ text: String, as: T.Type) throws -> T { try decoder.decode(T.self, from: Data(text.utf8)) }
     private func refresh() throws {
-        records = try rows("SELECT kind,id,revision,value FROM records ORDER BY kind,id").map { r in
-            RecordVersion(kind: r[0]!, id: r[1]!, revision: Int(r[2]!)!, value: try r[3].map { try decode($0, as: Graph.self) })
+        records = try rows("SELECT r.kind,r.id,r.revision,r.value,o.op_id FROM records r LEFT JOIN outbox o ON o.kind=r.kind AND o.id=r.id ORDER BY r.kind,r.id").map { r in
+            RecordVersion(kind: r[0]!, id: r[1]!, revision: Int(r[2]!)!, value: try r[3].map { try decode($0, as: Graph.self) }, localOperationID:r[4])
         }
         conflicts = try rows("SELECT value FROM conflicts ORDER BY id").map { try decode($0[0]!, as: Conflict.self) }.filter { !$0.resolved }
         pendingCount = Int(try rows("SELECT COUNT(*) FROM outbox")[0][0]!)!
@@ -99,9 +99,9 @@ import Combine
     var cursor: Int? { get throws { try state("cursor").flatMap(Int.init) } }
     func uploads() throws -> [Mutation] { try rows("SELECT mutation FROM outbox ORDER BY kind,id LIMIT 100").map { try decode($0[0]!, as: Mutation.self) } }
 
-    func edit(_ value: Graph?, kind: String, id: String, baseRevision: Int? = nil, resolveID: String? = nil) throws {
-        // A dialog supplies its observed revision. A newer local draft for the same
-        // root is preserved as a conflict instead of overwritten by an older dialog.
+    func edit(_ value: Graph?, kind: String, id: String, expected: EditToken = .new, resolveID: String? = nil) throws {
+        // Compare the editor's opening token inside the write transaction. Rejection
+        // leaves the stored graph/outbox intact and lets the UI retain its draft.
         try Graph.identifier(id); try value?.validate()
         guard ["note", "task", "calendar", "event"].contains(kind), value == nil || (value?.id == id && value?.kind == kind) else { throw CompanionError("Item ownership mismatch") }
         try transaction {
@@ -109,36 +109,69 @@ import Combine
             let revision = Int(old?[0] ?? "0") ?? 0
             let existing = try rows("SELECT mutation FROM outbox WHERE kind=? AND id=?", [kind,id]).first
             let pending = try existing.map { try decode($0[0]!, as: Mutation.self) }
-            if let observed = baseRevision, observed != revision, pending == nil { throw CompanionError("This item changed while you were editing. Reopen it; your draft remains here.") }
-            let mutation = Mutation(op_id: Dates.id("operation"), kind: kind, id: id, base_revision: pending?.base_revision ?? baseRevision ?? revision, value: value, resolve_id: resolveID ?? pending?.resolve_id)
+            let current = EditToken(revision:old == nil ? nil : revision, operationID:pending?.op_id)
+            if expected != current { throw CompanionError("This item changed while you were editing. Reopen it; your draft remains here.") }
+            let mutation = Mutation(op_id: Dates.id("operation"), kind: kind, id: id, base_revision: pending?.base_revision ?? revision, value: value, resolve_id: resolveID ?? pending?.resolve_id)
             try execute("INSERT INTO records VALUES(?,?,?,?) ON CONFLICT(kind,id) DO UPDATE SET value=excluded.value", [kind,id,String(revision),try value.map(json)])
             try execute("INSERT INTO outbox VALUES(?,?,?,?) ON CONFLICT(kind,id) DO UPDATE SET op_id=excluded.op_id,mutation=excluded.mutation", [kind,id,mutation.op_id,try json(mutation)])
         }
         try refresh()
     }
-    func importEvents(_ graphs: [Graph]) throws {
-        guard graphs.count <= 100 else { throw CompanionError("Import at most 100 events per file") }
-        guard let calendar = records.first(where:{ $0.kind == "calendar" && $0.value != nil }) else {
-            throw CompanionError("Create or sync a calendar before importing events")
+    /// Build a read-only replacement preview. Imported UIDs are global matches;
+    /// existing calendar membership wins, and ambiguous/pending versions block it.
+    func previewEvents(_ sources: [Graph], targetCalendarID: String) throws -> EventImportPlan {
+        guard !sources.isEmpty, sources.count <= 100 else { throw CompanionError("Import between 1 and 100 events per file") }
+        guard let calendar = records.first(where:{ $0.kind == "calendar" && $0.id == targetCalendarID && $0.value != nil }) else {
+            throw CompanionError("Choose an existing calendar for new events")
         }
-        let prepared = try graphs.map { source -> Graph in
+        // Tombstones have no UID payload. Conservatively wait until all event
+        // deletions are synced rather than accidentally resurrecting one by UID.
+        guard !records.contains(where:{ $0.kind == "event" && $0.value == nil && $0.localOperationID != nil }) else {
+            throw CompanionError("Sync pending event deletions before importing. Your file is unchanged.")
+        }
+        var uids = Set<String>()
+        let entries = try sources.map { source -> EventImportPlan.Entry in
+            guard source.kind == "event", uids.insert(source.text("ics_uid")).inserted else {
+                throw CompanionError("Import requires events with distinct UIDs")
+            }
             var graph = source
-            graph.set("calendar_id", calendar.id)
-            if let existing = records.first(where:{ $0.kind == "event" && $0.value?.text("ics_uid") == graph.text("ics_uid") }) {
-                graph.set("id", existing.id)
-                graph.reminders = graph.reminders.map { var alarm = $0; alarm.owner_id = existing.id; return alarm }
-                graph.exceptions = graph.exceptions.map { var exception = $0; exception.event_id = existing.id; return exception }
+            let matches = records.filter { $0.kind == "event" && $0.value?.text("ics_uid") == graph.text("ics_uid") }
+            guard matches.count <= 1 else { throw CompanionError("More than one event has this UID. Resolve the duplicate before importing.") }
+            let existing = matches.first
+            if let existing {
+                guard existing.localOperationID == nil,
+                      !conflicts.contains(where:{ $0.kind == "event" && $0.record_id == existing.id }) else {
+                    throw CompanionError("An imported event has pending edits or a conflict. Sync and resolve it before replacing it.")
+                }
+                graph = try EventImportPlan.preservingIdentity(graph, existing:existing.value!)
+            } else {
+                guard !records.contains(where:{ $0.kind == "event" && $0.id == graph.id }) else {
+                    throw CompanionError("Imported event ID is already in use")
+                }
+                graph.set("calendar_id",targetCalendarID)
+            }
+            guard records.contains(where:{ $0.kind == "calendar" && $0.id == graph.text("calendar_id") && $0.value != nil }) else {
+                throw CompanionError("The existing event's calendar is unavailable")
             }
             try graph.validate()
-            return graph
+            return EventImportPlan.Entry(graph:graph, expected:existing?.editToken ?? .new)
         }
+        return EventImportPlan(sources:sources, targetCalendarID:targetCalendarID,
+                               calendarToken:calendar.editToken, entries:entries)
+    }
+
+    /// Commit exactly the previewed versions. Recheck UIDs, pending work and the
+    /// selected calendar inside one transaction; any change rejects the whole file.
+    func importEvents(_ plan: EventImportPlan) throws {
         try transaction {
-            for g in prepared {
-                let old = try rows("SELECT revision FROM records WHERE kind='event' AND id=?", [g.id]).first
-                let pendingRow = try rows("SELECT mutation FROM outbox WHERE kind='event' AND id=?", [g.id]).first
-                let pending = try pendingRow.map { try decode($0[0]!, as: Mutation.self) }
-                let revision = Int(old?[0] ?? "0") ?? 0
-                let mutation = Mutation(op_id: Dates.id("operation"),kind:"event",id:g.id,base_revision:pending?.base_revision ?? revision,value:g,resolve_id:pending?.resolve_id)
+            let current = try previewEvents(plan.sources,targetCalendarID:plan.targetCalendarID)
+            guard current.entries == plan.entries, current.calendarToken == plan.calendarToken else {
+                throw CompanionError("Calendar data changed after preview. Review the file again before importing.")
+            }
+            for entry in plan.entries {
+                let g = entry.graph
+                let revision = entry.expected.revision ?? 0
+                let mutation = Mutation(op_id:Dates.id("operation"),kind:"event",id:g.id,base_revision:revision,value:g,resolve_id:nil)
                 try execute("INSERT INTO records VALUES('event',?,?,?) ON CONFLICT(kind,id) DO UPDATE SET value=excluded.value",[g.id,String(revision),try json(g)])
                 try execute("INSERT INTO outbox VALUES('event',?,?,?) ON CONFLICT(kind,id) DO UPDATE SET op_id=excluded.op_id,mutation=excluded.mutation",[g.id,mutation.op_id,try json(mutation)])
             }

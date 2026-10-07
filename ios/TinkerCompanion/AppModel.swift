@@ -75,12 +75,12 @@ import Combine
             connection = "Unpaired — local edits retained"; error = nil
         } catch { self.error = error.localizedDescription }
     }
-    func save(_ graph: Graph, observedRevision: Int? = nil) throws {
-        try store.edit(graph,kind:graph.kind,id:graph.id,baseRevision:observedRevision)
+    func save(_ graph: Graph, expected: EditToken = .new) throws {
+        try store.edit(graph,kind:graph.kind,id:graph.id,expected:expected)
         Task { await self.reconcileReminders(); await self.sync() }
     }
     func delete(_ row: RecordVersion) throws {
-        try store.edit(nil,kind:row.kind,id:row.id,baseRevision:row.revision)
+        try store.edit(nil,kind:row.kind,id:row.id,expected:row.editToken)
         Task { await self.reconcileReminders(); await self.sync() }
     }
     func reconcileReminders() async {

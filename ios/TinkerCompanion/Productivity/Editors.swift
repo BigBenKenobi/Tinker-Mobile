@@ -10,7 +10,7 @@ struct GraphEditor: View {
     private let initialGraph: Graph
     @State private var discard = false
     @State private var preview = false
-    let revision: Int
+    let token: EditToken
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
     @State private var editingReminder: Reminder?
@@ -144,7 +144,7 @@ struct GraphEditor: View {
                 graph.set("end_at",Dates.stamp(max(calendar.startOfDay(for:end),calendar.date(byAdding:.day,value:1,to:calendar.startOfDay(for:start))!)))
             }
         }
-        do { try model.save(graph,observedRevision:revision); dismiss() } catch { self.error = error.localizedDescription }
+        do { try model.save(graph,expected:token); dismiss() } catch { self.error = error.localizedDescription }
     }
 }
 

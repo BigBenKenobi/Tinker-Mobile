@@ -87,15 +87,15 @@ struct DomainView: View {
         }.navigationTitle(kind == "note" ? "Notes" : "Tasks")
         .searchable(text:presentation.draft(kind + ".search")).refreshable { await model.sync() }
         .toolbar { Button { newItem = true } label: { Label("Create",systemImage:"plus") } }
-        .sheet(item:$editing) { row in NavigationStack { GraphEditor(model:model,graph:row.value!,revision:row.revision) } }
-        .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:Graph.new(kind),revision:0) } }
+        .sheet(item:$editing) { row in NavigationStack { GraphEditor(model:model,graph:row.value!,token:row.editToken) } }
+        .sheet(isPresented:$newItem) { NavigationStack { GraphEditor(model:model,graph:Graph.new(kind),token:.new) } }
         .confirmationDialog("Delete this item and its linked reminders?",isPresented:Binding(get:{ deleting != nil },set:{ if !$0 { deleting = nil } }),titleVisibility:.visible) {
             Button("Delete",role:.destructive) { if let row = deleting { do { try model.delete(row) } catch { model.error = error.localizedDescription } }; deleting = nil }
         }
     }
     private func complete(_ row: RecordVersion) {
         guard var graph = row.value else { return }; graph.set("status","completed"); graph.set("updated_at",Dates.stamp(Date()))
-        do { try model.save(graph,observedRevision:row.revision) } catch { model.error = error.localizedDescription }
+        do { try model.save(graph,expected:row.editToken) } catch { model.error = error.localizedDescription }
     }
 }
 

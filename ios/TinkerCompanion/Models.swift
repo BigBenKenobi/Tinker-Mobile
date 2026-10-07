@@ -332,11 +332,22 @@ struct Graph: Codable, Equatable, Identifiable {
     }
 }
 
+/// Phone-only optimistic save token. The durable outbox operation distinguishes
+/// offline edits that share one desktop revision. Never included in wire JSON.
+struct EditToken: Equatable {
+    let revision: Int?
+    let operationID: String?
+    static let new = EditToken(revision:nil, operationID:nil)
+}
+
 struct RecordVersion: Codable, Identifiable {
     var kind: String
     var id: String
     var revision: Int
     var value: Graph?
+    var localOperationID: String? = nil
+    var editToken: EditToken { EditToken(revision:revision, operationID:localOperationID) }
+    enum CodingKeys: String, CodingKey { case kind, id, revision, value }
 }
 struct Conflict: Codable, Identifiable {
     var id: String
