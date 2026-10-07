@@ -1,5 +1,12 @@
 # Tinker for iPhone
 
+Review stack: [companion PR #1](https://github.com/BigBenKenobi/Tinker-Mobile/pull/1)
+→ [interface PR #2](https://github.com/BigBenKenobi/Tinker-Mobile/pull/2)
+→ [integrated candidate PR #3](https://github.com/BigBenKenobi/Tinker-Mobile/pull/3).
+The application remains unaccepted; see the candidate
+[status record](https://github.com/BigBenKenobi/Tinker-Mobile/blob/ui/minimal-chat-sync-status/docs/STATUS.md)
+for current source/evidence and physical gates.
+
 Native SwiftUI iPhone companion, iOS 17+. Notes, Tasks and Calendar use an on-device
 SQLite store and durable offline edits. Sync is local-network only, with the
 Fedora desktop app open. No hosted runtime, account or model service is used.
@@ -54,7 +61,7 @@ recurrence and per-occurrence changes, linked reminders, Files ICS import/export
 Conflicts preserve complete versions and require an explicit choice.
 
 The recurrence/ICS subset and reminder budgets are documented in
-[the shared sync contract](contracts/SYNC-v1.md). Full RFC5545, iPad layouts, chat,
+[the shared sync contract](contracts/SYNC-v2.md). Full RFC5545, iPad layouts, chat,
 other workspaces, animated desktop themes, hosted sync and remote models are later
 milestones. OS notifications cannot guarantee delivery of changes not yet synced.
 
