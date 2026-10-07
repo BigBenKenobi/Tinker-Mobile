@@ -1,11 +1,13 @@
 name: iPhone companion
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: ios-${{ github.ref }}
+  group: ios-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   simulator:
@@ -17,6 +19,8 @@ jobs:
         phone: [small, large]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify generated Xcode project is current
         run: |
           python3 scripts/generate_xcode_project.py
@@ -78,13 +82,15 @@ jobs:
             ${{ runner.temp }}/tinker-test-summary.json
             ${{ runner.temp }}/tinker-screenshots
             ${{ runner.temp }}/tinker-diagnostics
-          retention-days: 3
+          retention-days: 14
   unsigned-device-ipa:
     if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Confirm Xcode 26 toolchain
         run: |
           xcodebuild -version > "$RUNNER_TEMP/xcode-version.txt"
@@ -117,4 +123,4 @@ jobs:
           name: TinkerCompanion-unsigned-device-ipa
           path: ${{ runner.temp }}/TinkerCompanion-unsigned.ipa
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 14
