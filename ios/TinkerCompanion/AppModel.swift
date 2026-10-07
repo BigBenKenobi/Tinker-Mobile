@@ -9,7 +9,8 @@ import Combine
 @MainActor final class AppModel: ObservableObject {
     let store: LocalStore
     let discovery = Discovery()
-    let notifications = Notifications()
+    let notifications: Notifications
+    let isolated: Bool
     @Published private(set) var pairing: Pairing?
     @Published private(set) var connection = "Offline — local editing available"
     @Published private(set) var syncing = false
@@ -20,11 +21,14 @@ import Combine
     private var localNetwork = false
     private var subscriptions = Set<AnyCancellable>()
 
-    init(store: LocalStore) throws {
-        self.store = store; pairing = try PairingKeychain.load()
+    init(store: LocalStore, isolated: Bool = false) throws {
+        self.store = store; self.isolated = isolated
+        notifications = Notifications(isolated:isolated)
+        pairing = isolated ? nil : try PairingKeychain.load()
         store.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in:&subscriptions)
         discovery.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in:&subscriptions)
         notifications.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in:&subscriptions)
+        guard !isolated else { return }
         monitor.pathUpdateHandler = { [weak self] path in
             let available = path.status == .satisfied && (path.usesInterfaceType(.wifi) || path.usesInterfaceType(.wiredEthernet))
             Task { @MainActor in
@@ -36,7 +40,7 @@ import Combine
     }
     deinit { monitor.cancel(); foregroundTask?.cancel() }
     func foreground() {
-        guard !active else { return }; active = true; discovery.start()
+        guard !isolated, !active else { return }; active = true; discovery.start()
         foregroundTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.sync()
@@ -48,6 +52,7 @@ import Combine
         active = false; foregroundTask?.cancel(); foregroundTask = nil; discovery.stop()
     }
     func pair(qr: String) async {
+        guard !isolated else { error = "Pairing is disabled in isolated tests"; return }
         guard !syncing else { return }; syncing = true; defer { syncing = false }
         do {
             let invitation = try JSONDecoder().decode(Invitation.self,from:Data(qr.utf8)); try invitation.validate()
@@ -63,6 +68,7 @@ import Combine
         await sync()
     }
     func unpair() async {
+        guard !isolated else { return }
         guard !syncing else { error = "Wait for the current sync to finish before unpairing"; return }
         do {
             try PairingKeychain.remove(); pairing = nil; try store.resetSyncCursor(); await notifications.cancelAll()
@@ -78,12 +84,14 @@ import Combine
         Task { await self.reconcileReminders(); await self.sync() }
     }
     func reconcileReminders() async {
+        guard !isolated else { return }
         // Unpaired installations may still schedule their own locally created
         // reminders. After unpair, synced reminders stay cancelled until enabled.
         if pairing == nil, (try? store.state("server_id")) != nil { await notifications.cancelAll(); return }
         do { try await notifications.reconcile(store.records) } catch { self.error = error.localizedDescription }
     }
     func sync() async {
+        guard !isolated else { return }
         guard !syncing else { return }
         guard var paired = pairing else { connection = "Unpaired — local editing available"; return }
         guard localNetwork else { connection = "Offline — waiting for the same Wi-Fi network"; return }

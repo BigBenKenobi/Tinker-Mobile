@@ -1,6 +1,33 @@
 # Xcode Simulator verification
 
-## Latest release gate — 7 October 2026
+## Full-interface integration release gate — 7 October 2026
+
+Tested mobile code commit: `78ae01cfeb517c8a1227818ffea430dbd33cc628`.
+
+[Successful integration release-gate run](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37549336544)
+(run ID `37549336544`). The generated-project consistency check and three
+generator tests passed. On both the small and large iOS 18.5 Simulator jobs,
+27 unit tests plus four UI/screenshot tests passed: 31 tests, zero failures,
+skips, or expected failures. Each job exported 39 screenshot attachments.
+The unsigned-device job used Xcode 26.6 (17F113) and built the Release app for
+generic iPhone hardware.
+
+Downloaded artifact:
+`dist/TinkerCompanion-unsigned-78ae01c-run-37549336544.ipa`
+
+- Size: 887,832 bytes
+- SHA-256: `c63136d50cb67e4e2644917808173e89a17a7c45ca158a232022b0e44f9cf595`
+- Local verification: ZIP integrity passed; the arm64 app has bundle identifier
+  `com.bigbenkenobi.tinker-companion`, minimum iOS 17.0, and no code signature.
+
+This is the release evidence for the integrated full-interface source. The
+following companion-only receipt is preserved as historical context.
+
+## Companion baseline release gate — 7 October 2026
+
+This evidence covers the companion-only source revision below. The combined
+`feat/iphone-full-interface` branch needs a fresh Simulator and IPA release
+gate before it can be treated as current release evidence.
 
 Tested mobile code commit: `51474b7bb51ecfe34c86a506e15dfe4775c92d3c`.
 

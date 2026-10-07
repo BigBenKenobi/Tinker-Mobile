@@ -13,8 +13,6 @@ jobs:
   simulator:
     runs-on: macos-15
     timeout-minutes: 30
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     strategy:
       fail-fast: false
       matrix:
@@ -35,23 +33,55 @@ jobs:
           import json, os
           data = json.load(open('/tmp/tinker-simulators.json'))
           devices = [d for runtime, values in data['devices'].items() if '.iOS-' in runtime for d in values if d['name'].startswith('iPhone')]
-          preferred = 'iPhone SE (3rd generation)' if '${{ matrix.phone }}' == 'small' else 'iPhone 16 Pro Max'
-          devices = [d for d in devices if d['name'] == preferred]
           if not devices:
-              raise SystemExit('Required Simulator missing: ' + preferred)
-          print('Selected Simulator:', devices[0]['name'])
+              raise SystemExit('No iPhone Simulator installed')
+          size = "${{ matrix.phone }}"
+          preferred = ['iPhone SE (3rd generation)', 'iPhone 16', 'iPhone 16 Pro'] if size == 'small' else ['iPhone 16 Pro Max', 'iPhone 16 Plus']
+          selected = next((d for name in preferred for d in devices if d['name'] == name), None)
+          if selected is None:
+              raise SystemExit('No supported ' + size + ' iPhone Simulator installed')
+          print('Selected Simulator:', selected['name'], selected['udid'])
           with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write('TINKER_SIMULATOR_ID=' + devices[0]['udid'] + '\n')
+              env.write('TINKER_SIMULATOR_ID=' + selected['udid'] + '\n')
           PY
+      - name: Validate project generator
+        run: python3 -m unittest discover -s scripts/tests -v
       - name: Build and test native iPhone app
         run: |
-          xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test
+          set +e
+          set -o pipefail
+          xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/tinker-xcode.log"
+          xcode_status=${PIPESTATUS[0]}
+          python3 scripts/annotate_xcode_errors.py "$RUNNER_TEMP/tinker-xcode.log"
+          python3 scripts/summarize_xcresult.py /tmp/TinkerCompanion.xcresult "$RUNNER_TEMP/tinker-test-summary.json"
+          summary_status=$?
+          if [ "$xcode_status" -eq 0 ]; then exit "$summary_status"; fi
+          exit "$xcode_status"
+      - name: Export screenshot attachments
+        if: always()
+        run: |
+          xcrun xcresulttool export attachments --path /tmp/TinkerCompanion.xcresult --output-path "$RUNNER_TEMP/tinker-screenshots"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'tinker-screenshots'
+          images = [p for p in root.rglob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg')]
+          print('::notice title=XCTest screenshots::Exported ' + str(len(images)) + ' image attachments')
+          PY
+      - name: Export native diagnostics
+        if: always()
+        run: xcrun xcresulttool export diagnostics --path /tmp/TinkerCompanion.xcresult --output-path "$RUNNER_TEMP/tinker-diagnostics"
       - name: Preserve Xcode results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xcode-results-${{ matrix.phone }}
-          path: /tmp/TinkerCompanion.xcresult
+          path: |
+            /tmp/TinkerCompanion.xcresult
+            ${{ runner.temp }}/tinker-xcode.log
+            ${{ runner.temp }}/tinker-test-summary.json
+            ${{ runner.temp }}/tinker-screenshots
+            ${{ runner.temp }}/tinker-diagnostics
           retention-days: 14
   unsigned-device-ipa:
     if: github.event_name == 'workflow_dispatch'
