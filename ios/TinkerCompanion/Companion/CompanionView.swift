@@ -23,6 +23,10 @@ struct CompanionView: View {
                 }
                 Text("Open Tinker on Fedora, enable local sync on its LAN address, then show its pairing QR. Both devices must be on the same network.").font(.caption).foregroundStyle(.secondary)
             }.phoneSection()
+            Section("Recovery and build") {
+                RecoveryExportView(store:model.store)
+                Text(BuildIdentity.label).font(.caption).textSelection(.enabled)
+            }.phoneSection()
             Section("Reminders") {
                 Text(model.notifications.status)
                 Button("Enable iPhone notifications") { Task { await model.notifications.authorize(); await model.reconcileReminders() } }

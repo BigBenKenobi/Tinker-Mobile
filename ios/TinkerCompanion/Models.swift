@@ -340,7 +340,7 @@ struct EditToken: Equatable {
     static let new = EditToken(revision:nil, operationID:nil)
 }
 
-struct RecordVersion: Codable, Identifiable {
+struct RecordVersion: Codable, Equatable, Identifiable {
     var kind: String
     var id: String
     var revision: Int
@@ -349,7 +349,7 @@ struct RecordVersion: Codable, Identifiable {
     var editToken: EditToken { EditToken(revision:revision, operationID:localOperationID) }
     enum CodingKeys: String, CodingKey { case kind, id, revision, value }
 }
-struct Conflict: Codable, Identifiable {
+struct Conflict: Codable, Equatable, Identifiable {
     var id: String
     var kind: String
     var record_id: String

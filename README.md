@@ -1,5 +1,9 @@
 # Tinker for iPhone
 
+Current branches, exact build evidence and remaining gates: [status](docs/STATUS.md).
+Use [physical acceptance](docs/PHYSICAL-ACCEPTANCE.md) and [recovery](docs/RECOVERY.md)
+before installing or consolidating the review stack.
+
 Native SwiftUI iPhone companion, iOS 17+. Notes, Tasks and Calendar use an on-device
 SQLite store and durable offline edits. Sync is local-network only, with the
 Fedora desktop app open. No hosted runtime, account or model service is used.
@@ -64,7 +68,7 @@ recurrence and per-occurrence changes, linked reminders, Files ICS import/export
 Conflicts preserve complete versions and require an explicit choice.
 
 The recurrence/ICS subset and reminder budgets are documented in
-[the shared sync contract](contracts/SYNC-v1.md). Full RFC5545, iPad layouts, hosted sync and remote models remain unavailable. Other workspaces provide visual
+[the shared sync contract](contracts/SYNC-v2.md). Full RFC5545, iPad layouts, hosted sync and remote models remain unavailable. Other workspaces provide visual
 layouts and disabled operations; Chat has a temporary composer only. OS notifications cannot guarantee delivery of changes not yet synced.
 
 See [acceptance](docs/ACCEPTANCE.md) for verified checks and pending gates. Linux

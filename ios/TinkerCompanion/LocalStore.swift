@@ -11,6 +11,7 @@ import Combine
     @Published private(set) var records: [RecordVersion] = []
     @Published private(set) var conflicts: [Conflict] = []
     @Published private(set) var pendingCount = 0
+    private(set) var recordGeneration = 0
     private let encoder: JSONEncoder = { let e = JSONEncoder(); e.outputFormatting = [.sortedKeys]; return e }()
     private let decoder = JSONDecoder()
     private let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
@@ -81,11 +82,14 @@ import Combine
     private func json<T: Encodable>(_ value: T) throws -> String { String(decoding: try encoder.encode(value), as: UTF8.self) }
     private func decode<T: Decodable>(_ text: String, as: T.Type) throws -> T { try decoder.decode(T.self, from: Data(text.utf8)) }
     private func refresh() throws {
-        records = try rows("SELECT r.kind,r.id,r.revision,r.value,o.op_id FROM records r LEFT JOIN outbox o ON o.kind=r.kind AND o.id=r.id ORDER BY r.kind,r.id").map { r in
+        let loadedRecords = try rows("SELECT r.kind,r.id,r.revision,r.value,o.op_id FROM records r LEFT JOIN outbox o ON o.kind=r.kind AND o.id=r.id ORDER BY r.kind,r.id").map { r in
             RecordVersion(kind: r[0]!, id: r[1]!, revision: Int(r[2]!)!, value: try r[3].map { try decode($0, as: Graph.self) }, localOperationID:r[4])
         }
-        conflicts = try rows("SELECT value FROM conflicts ORDER BY id").map { try decode($0[0]!, as: Conflict.self) }.filter { !$0.resolved }
-        pendingCount = Int(try rows("SELECT COUNT(*) FROM outbox")[0][0]!)!
+        let loadedConflicts = try rows("SELECT value FROM conflicts ORDER BY id").map { try decode($0[0]!, as: Conflict.self) }.filter { !$0.resolved }
+        let loadedCount = Int(try rows("SELECT COUNT(*) FROM outbox")[0][0]!)!
+        if records != loadedRecords { recordGeneration += 1; records = loadedRecords }
+        if conflicts != loadedConflicts { conflicts = loadedConflicts }
+        if pendingCount != loadedCount { pendingCount = loadedCount }
     }
     func state(_ key: String) throws -> String? { try rows("SELECT value FROM state WHERE key=?", [key]).first?.first ?? nil }
     private func setState(_ key: String, _ value: String) throws {
@@ -207,6 +211,12 @@ import Combine
     }
     func apply(_ page: Changes) throws {
         guard page.version == 2, try state("server_id") == page.server_id else { throw CompanionError("Sync identity/version mismatch") }
+        // An empty page still validates identity and cursor, but does not write
+        // state, decode every graph or invalidate SwiftUI's domain projections.
+        if page.changes.isEmpty {
+            guard !page.has_more, page.cursor == (try cursor ?? 0) else { throw CompanionError("Invalid empty sync page") }
+            return
+        }
         try transaction {
             var previous = try cursor ?? 0
             for change in page.changes {
@@ -225,6 +235,16 @@ import Combine
         try transaction {
             for (request,result) in zip(sent,response.results) {
                 guard result.op_id == request.op_id, ["applied","conflict"].contains(result.status), result.revision >= 0 else { throw CompanionError("Mismatched upload operation") }
+                if result.status == "conflict" {
+                    guard let conflict = result.conflict, !conflict.resolved,
+                          conflict.kind == request.kind, conflict.record_id == request.id,
+                          conflict.current_revision == result.revision else {
+                        throw CompanionError("Incomplete conflict acknowledgement")
+                    }
+                    for graph in [conflict.current,conflict.incoming].compactMap({ $0 }) {
+                        guard graph.id == request.id, graph.kind == request.kind else { throw CompanionError("Conflict ownership mismatch") }
+                    }
+                } else if result.conflict != nil { throw CompanionError("Unexpected conflict acknowledgement") }
                 let queued = try rows("SELECT mutation FROM outbox WHERE kind=? AND id=?",[request.kind,request.id]).first
                 let newer = try queued.map { try decode($0[0]!, as: Mutation.self) }
                 if newer?.op_id == request.op_id {
@@ -257,6 +277,25 @@ import Combine
             try execute("INSERT INTO outbox VALUES(?,?,?,?) ON CONFLICT(kind,id) DO UPDATE SET op_id=excluded.op_id,mutation=excluded.mutation",[conflict.kind,conflict.record_id,mutation.op_id,try json(mutation)])
         }
         try refresh()
+    }
+    /// Produce a consistent standalone database while WAL writes may exist.
+    /// The backup includes domain/outbox/recovery state, never Keychain credentials.
+    func exportRecovery() throws -> URL {
+        let directory = try RecoveryFiles.directory()
+        let output = directory.appendingPathComponent("companion.sqlite3")
+        var destination: OpaquePointer?
+        guard sqlite3_open(output.path,&destination) == SQLITE_OK else {
+            sqlite3_close(destination); throw CompanionError("Cannot create recovery copy")
+        }
+        defer { sqlite3_close(destination) }
+        guard let backup = sqlite3_backup_init(destination,"main",database,"main") else {
+            throw CompanionError("Cannot prepare recovery copy")
+        }
+        let status = sqlite3_backup_step(backup,-1)
+        let finished = sqlite3_backup_finish(backup)
+        guard status == SQLITE_DONE, finished == SQLITE_OK else { throw CompanionError("Recovery copy failed; the original store is unchanged") }
+        try RecoveryFiles.protect(output)
+        return output
     }
     func resetSyncCursor() throws {
         // Unpairing retains all domain data and pending edits. New pairing cannot

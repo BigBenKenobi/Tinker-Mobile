@@ -21,7 +21,7 @@ struct Invitation: Codable {
         try Graph.identifier(server_id); _ = try LocalEndpoint.validate(endpoint)
     }
 }
-struct Pairing: Codable {
+struct Pairing: Codable, Equatable {
     var server_id: String
     var endpoint: String
     var certificate_sha256: String

@@ -10,6 +10,7 @@ struct SyncStatus: View {
         VStack(alignment:.leading,spacing:4) {
             Label(model.connection,systemImage:model.syncing ? "arrow.triangle.2.circlepath" : "network")
             Text("\(model.store.pendingCount) pending edits · \(model.store.conflicts.count) conflicts").font(.caption)
+            if let date = model.lastSuccessfulSync { Text("Last successful sync: " + date.formatted(date:.abbreviated,time:.standard)).font(.caption) }
             if let error = model.error { Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled) }
         }.font(.footnote).padding(.vertical,4).accessibilityElement(children:.combine)
     }
@@ -29,7 +30,7 @@ enum CloudSyncState {
     }
     var label: String {
         switch self {
-        case .synced: return "Connected and synced"
+        case .synced: return "Last sync completed; desktop availability is checked on the next sync"
         case .pending: return "Pending syncs"
         case .error: return "Sync error or unavailable connection"
         }

@@ -1,3 +1,7 @@
+> Historical implementation/validation narrative. For current source, results and
+> remaining gates, see [STATUS.md](STATUS.md). Statements below apply to their
+> original recorded commits and have not been promoted to fresh acceptance.
+
 # Full-interface verification
 
 Status: integrated native build and automated regression pass on both phone sizes.

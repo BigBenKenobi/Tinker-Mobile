@@ -16,7 +16,8 @@ import Combine
     @Published private(set) var syncing = false
     @Published private(set) var syncFailure: String?
     @Published private(set) var hasCompletedSync = false
-    /// A checkmark requires a successful sync on the current reachable connection.
+    @Published private(set) var lastSuccessfulSync: Date?
+    /// A checkmark records the last successful exchange, not desktop reachability.
     var cloudSyncStatus: CloudSyncState {
         if syncing { return .pending }
         if syncFailure != nil || !store.conflicts.isEmpty { return .error }
@@ -73,7 +74,7 @@ import Combine
             let result = try await transport.request("/v2/pair",method:"POST",body:body,as:PairResponse.self)
             guard result.version == 2 else { throw CompanionError("Desktop protocol changed") }
             let paired = Pairing(server_id:result.server_id,endpoint:invitation.endpoint,certificate_sha256:invitation.certificate_sha256,peer_id:result.peer_id,credential:result.credential)
-            try PairingKeychain.save(paired); pairing = paired; connection = "Paired — ready to sync"; error = nil
+            if pairing != paired { try PairingKeychain.save(paired); pairing = paired }; connection = "Paired — ready to sync"; error = nil
         } catch { self.error = error.localizedDescription }
         syncing = false
         await sync()
@@ -83,7 +84,7 @@ import Combine
         guard !syncing else { error = "Wait for the current sync to finish before unpairing"; return }
         do {
             try PairingKeychain.remove(); pairing = nil; try store.resetSyncCursor(); await notifications.cancelAll()
-            connection = "Unpaired — local edits retained"; error = nil; syncFailure = nil; hasCompletedSync = false
+            connection = "Unpaired — local edits retained"; error = nil; syncFailure = nil; hasCompletedSync = false; lastSuccessfulSync = nil
         } catch { self.error = error.localizedDescription }
     }
     func save(_ graph: Graph, expected: EditToken = .new) throws {
@@ -99,7 +100,7 @@ import Combine
         // Unpaired installations may still schedule their own locally created
         // reminders. After unpair, synced reminders stay cancelled until enabled.
         if pairing == nil, (try? store.state("server_id")) != nil { await notifications.cancelAll(); return }
-        do { try await notifications.reconcile(store.records) } catch { self.error = error.localizedDescription }
+        do { try await notifications.reconcile(store.records,generation:store.recordGeneration) } catch { self.error = error.localizedDescription }
     }
     func sync() async {
         guard !isolated else { return }
@@ -127,8 +128,8 @@ import Combine
                 try store.acknowledge(response,sent:sent)
             }
             try await pull(transport)
-            try PairingKeychain.save(paired); pairing = paired
-            connection = "Connected · " + Date().formatted(date:.omitted,time:.shortened); error = nil; syncFailure = nil; hasCompletedSync = true
+            if pairing != paired { try PairingKeychain.save(paired); pairing = paired }
+            connection = "Connected · " + Date().formatted(date:.omitted,time:.shortened); error = nil; syncFailure = nil; hasCompletedSync = true; lastSuccessfulSync = Date()
             await reconcileReminders()
         } catch is CancellationError { connection = "Sync paused — edits saved locally" }
         catch { connection = "Disconnected — edits saved locally"; hasCompletedSync = false; syncFailure = error.localizedDescription; self.error = error.localizedDescription }

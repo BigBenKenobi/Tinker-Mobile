@@ -21,5 +21,6 @@
     "code_signature": "ABSENT"
   },
   "full_interface_integration": "PASS: current companion fixes integrated and release-gated at 78ae01cfeb517c8a1227818ffea430dbd33cc628",
-  "physical_iphone": "PENDING"
+  "physical_iphone": "PENDING",
+  "evidence_scope": "historical source only; see docs/STATUS.md for the current candidate"
 }

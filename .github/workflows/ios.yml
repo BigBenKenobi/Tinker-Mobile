@@ -1,9 +1,18 @@
 name: iPhone companion
 on:
   push:
-    branches: [ui/minimal-chat-sync-status]
+    branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      full_capture:
+        description: Run all UI cases and retain full screenshot evidence
+        type: boolean
+        default: false
+      device_build:
+        description: Build an unsigned IPA for physical acceptance
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -13,12 +22,29 @@ jobs:
   simulator:
     runs-on: macos-15
     timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     strategy:
       fail-fast: false
       matrix:
         phone: [small, large]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Choose regression or full visual suite
+        env:
+          CAPTURE_REQUESTED: ${{ inputs.full_capture }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          full=false
+          if [ "$CAPTURE_REQUESTED" = true ]; then
+            full=true
+          elif [ -n "$BASE_SHA" ] && git cat-file -e "$BASE_SHA" 2>/dev/null; then
+            if git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^ios/(TinkerCompanion/(Shell/|Productivity/|Appearance/|Shared/|Workspaces/|Companion/|.*View.swift)|TinkerCompanionUITests/)'; then full=true; fi
+          fi
+          echo "FULL_CAPTURE=$full" >> "$GITHUB_ENV"
       - name: Verify generated Xcode project is current
         run: |
           python3 scripts/generate_xcode_project.py
@@ -48,7 +74,11 @@ jobs:
         run: |
           set +e
           set -o pipefail
-          xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUNNER_TEMP/tinker-xcode.log"
+          selection=()
+          if [ "$FULL_CAPTURE" != true ]; then
+            selection=(-skip-testing:TinkerCompanionUITests/PresentationTests/testDestinationScreenshots -skip-testing:TinkerCompanionUITests/PresentationTests/testPopulatedAndErrorFixturesWithLargeText)
+          fi
+          xcodebuild -project ios/TinkerCompanion.xcodeproj -scheme TinkerCompanion -destination "platform=iOS Simulator,id=$TINKER_SIMULATOR_ID" -resultBundlePath /tmp/TinkerCompanion.xcresult CODE_SIGNING_ALLOWED=NO CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" TINKER_SOURCE_REVISION="$(git rev-parse HEAD)" "${selection[@]}" test 2>&1 | tee "$RUNNER_TEMP/tinker-xcode.log"
           xcode_status=${PIPESTATUS[0]}
           python3 scripts/annotate_xcode_errors.py "$RUNNER_TEMP/tinker-xcode.log"
           python3 scripts/summarize_xcresult.py /tmp/TinkerCompanion.xcresult "$RUNNER_TEMP/tinker-test-summary.json"
@@ -56,7 +86,7 @@ jobs:
           if [ "$xcode_status" -eq 0 ]; then exit "$summary_status"; fi
           exit "$xcode_status"
       - name: Export screenshot attachments
-        if: always()
+        if: always() && env.FULL_CAPTURE == 'true'
         run: |
           xcrun xcresulttool export attachments --path /tmp/TinkerCompanion.xcresult --output-path "$RUNNER_TEMP/tinker-screenshots"
           python3 - <<'PY'
@@ -66,12 +96,22 @@ jobs:
           images = [p for p in root.rglob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg')]
           print('::notice title=XCTest screenshots::Exported ' + str(len(images)) + ' image attachments')
           PY
+      - name: Record exact build evidence
+        if: always()
+        run: python3 scripts/record_build_evidence.py --kind simulator --summary "$RUNNER_TEMP/tinker-test-summary.json" --output "$RUNNER_TEMP/validation.json"
+      - name: Preserve compact validation manifest
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: validation-${{ matrix.phone }}
+          path: ${{ runner.temp }}/validation.json
+          retention-days: 90
       - name: Export native diagnostics
         if: always()
         run: xcrun xcresulttool export diagnostics --path /tmp/TinkerCompanion.xcresult --output-path "$RUNNER_TEMP/tinker-diagnostics"
       - name: Preserve Xcode results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: xcode-results-${{ matrix.phone }}
           path: |
@@ -80,13 +120,16 @@ jobs:
             ${{ runner.temp }}/tinker-test-summary.json
             ${{ runner.temp }}/tinker-screenshots
             ${{ runner.temp }}/tinker-diagnostics
-          retention-days: 3
+          retention-days: 14
   unsigned-device-ipa:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/ui/minimal-chat-sync-status')
+    if: github.event_name == 'workflow_dispatch' && inputs.device_build
     runs-on: macos-26
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - name: Confirm Xcode 26 toolchain
         run: |
           xcodebuild -version > "$RUNNER_TEMP/xcode-version.txt"
@@ -98,7 +141,7 @@ jobs:
             -scheme TinkerCompanion -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -derivedDataPath "$RUNNER_TEMP/tinker-device-build" \
-            CODE_SIGNING_ALLOWED=NO build
+            CODE_SIGNING_ALLOWED=NO CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" TINKER_SOURCE_REVISION="$(git rev-parse HEAD)" build
       - name: Package SideStore IPA
         run: |
           app="$RUNNER_TEMP/tinker-device-build/Build/Products/Release-iphoneos/TinkerCompanion.app"
@@ -113,10 +156,18 @@ jobs:
           cp -R "$app" "$RUNNER_TEMP/tinker-ipa/Payload/"
           cd "$RUNNER_TEMP/tinker-ipa"
           zip -qry "$RUNNER_TEMP/TinkerCompanion-unsigned.ipa" Payload
-      - name: Retain unsigned IPA briefly
-        uses: actions/upload-artifact@v4
+      - name: Record device payload provenance
+        run: python3 scripts/record_build_evidence.py --kind unsigned-device --payload "$RUNNER_TEMP/TinkerCompanion-unsigned.ipa" --output "$RUNNER_TEMP/device-validation.json"
+      - name: Preserve compact device manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: validation-unsigned-device
+          path: ${{ runner.temp }}/device-validation.json
+          retention-days: 90
+      - name: Retain unsigned IPA for acceptance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: TinkerCompanion-unsigned-device-ipa
           path: ${{ runner.temp }}/TinkerCompanion-unsigned.ipa
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 14

@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "status": "candidate_under_validation",
+  "candidate_branch": "ui/minimal-chat-sync-status",
+  "mobile_source_sha": null,
+  "matching_desktop_contract_sha": "b49b68bc6e4da6b3b5f0a3fc5c42b2c75435c39a",
+  "desktop_local_test_sha": "9ef160498b383c1f4b2f8ef1c8ee1ed924205d10",
+  "protocol_version": 2,
+  "desktop_schema_version": 5,
+  "local_checks": {"desktop_companion_calendar_tests": 10, "project_generator_tests": 3},
+  "native_runs": [],
+  "visual_review": "pending",
+  "physical_acceptance": "pending",
+  "baseline_merge_approved": false
+}

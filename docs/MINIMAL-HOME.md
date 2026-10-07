@@ -1,3 +1,7 @@
+> Historical implementation/validation narrative. For current source, results and
+> remaining gates, see [STATUS.md](STATUS.md). Statements below apply to their
+> original recorded commits and have not been promoted to fresh acceptance.
+
 # Minimal home layout — review branch
 
 Base: feat/iphone-full-interface at df08ee311e1fd8b0726a3259f832b558d22136c1.

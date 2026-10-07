@@ -1,3 +1,7 @@
+> Historical implementation/validation narrative. For current source, results and
+> remaining gates, see [STATUS.md](STATUS.md). Statements below apply to their
+> original recorded commits and have not been promoted to fresh acceptance.
+
 # Xcode Simulator verification
 
 ## Full-interface integration release gate — 7 October 2026

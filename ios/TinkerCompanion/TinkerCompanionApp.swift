@@ -19,7 +19,11 @@ import UIKit
                         else if phase == .background { model.background(); if !model.isolated { AppDelegate.scheduleRefresh() } }
                     }
             } else {
-                ContentUnavailableView("Tinker could not open local data",systemImage:"externaldrive.badge.exclamationmark",description:Text(bootstrap.error ?? "Unknown startup error. The database has been preserved."))
+                VStack {
+                    ContentUnavailableView("Tinker could not open local data",systemImage:"externaldrive.badge.exclamationmark",description:Text(bootstrap.error ?? "Unknown startup error. The database has been preserved."))
+                    if !LaunchConfiguration.isolated { RecoveryExportView(store:nil).padding() }
+                    Text(BuildIdentity.label).font(.caption)
+                }
             }
         }
     }
