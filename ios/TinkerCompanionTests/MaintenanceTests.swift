@@ -27,9 +27,10 @@ import Combine
         let store = try store(); let graph = Graph.new("note")
         try store.apply(snapshot([])); try store.edit(graph,kind:graph.kind,id:graph.id)
         let sent = try store.uploads()
+        let before = store.records
         let response = UploadResponse(version:2,server_id:"desktop_fixture",results:[UploadResult(op_id:sent[0].op_id,status:"conflict",revision:7,conflict:nil)])
         XCTAssertThrowsError(try store.acknowledge(response,sent:sent))
-        XCTAssertEqual(store.records.first?.value,graph)
+        XCTAssertEqual(store.records,before)
         XCTAssertEqual(try store.uploads().first?.op_id,sent[0].op_id)
         XCTAssertEqual(try store.cursor,6)
     }

@@ -41,7 +41,7 @@ jobs:
       - name: Choose regression or full visual suite
         env:
           CAPTURE_REQUESTED: ${{ inputs.full_capture }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE_SHA: ${{ github.event.before || github.event.pull_request.base.sha }}
         run: |
           full=false
           if [ "$CAPTURE_REQUESTED" = true ]; then
