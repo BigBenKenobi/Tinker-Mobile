@@ -57,7 +57,7 @@ import XCTest
         let store = try LocalStore(path:location()); try store.apply(snapshot())
         var graph = Graph.new("task"); graph.set("title","First")
         try store.edit(graph,kind:"task",id:graph.id); let sent = try store.uploads()
-        graph.set("title","Newer"); try store.edit(graph,kind:"task",id:graph.id)
+        graph.set("title","Newer"); try store.edit(graph,kind:"task",id:graph.id,expected:try XCTUnwrap(store.records.first).editToken)
         try store.acknowledge(UploadResponse(version:2,server_id:"desktop_fixture",results:[UploadResult(op_id:sent[0].op_id,status:"applied",revision:1,conflict:nil)]),sent:sent)
         XCTAssertEqual(store.pendingCount,1); XCTAssertEqual(store.records.first?.value?.title,"Newer")
         XCTAssertEqual(try store.uploads().first?.base_revision,1)
@@ -65,7 +65,7 @@ import XCTest
     func testDeletionIsAnOfflineTombstone() throws {
         let store = try LocalStore(path:location()); let graph = Graph.new("note")
         try store.apply(snapshot([RecordVersion(kind:"note",id:graph.id,revision:2,value:graph)],cursor:2))
-        try store.edit(nil,kind:"note",id:graph.id,baseRevision:2)
+        try store.edit(nil,kind:"note",id:graph.id,expected:try XCTUnwrap(store.records.first).editToken)
         XCTAssertNil(store.records.first?.value); XCTAssertNil(try store.uploads().first?.value)
         XCTAssertEqual(try store.uploads().first?.base_revision,2)
     }
@@ -84,7 +84,7 @@ import XCTest
         try store.apply(snapshot([RecordVersion(kind:"calendar",id:calendar.id,revision:1,value:calendar)],cursor:1))
         var good = Graph.new("event"); good.set("calendar_id",calendar.id)
         var bad = Graph.new("event"); bad.set("calendar_id",calendar.id); bad.set("end_at",bad.text("start_at"))
-        XCTAssertThrowsError(try store.importEvents([good,bad])); XCTAssertEqual(store.records.count,1); XCTAssertEqual(store.pendingCount,0)
+        XCTAssertThrowsError(try store.previewEvents([good,bad],targetCalendarID:calendar.id)); XCTAssertEqual(store.records.count,1); XCTAssertEqual(store.pendingCount,0)
     }
     func testStrictSharedFieldsAndCredentialMetadata() throws {
         var graph = Graph.new("note"); graph.set("metadata_json","{\"access_token\":\"secret\"}")
@@ -169,9 +169,9 @@ import XCTest
         XCTAssertEqual(restored.title,graph.title); XCTAssertEqual(restored.text("description"),graph.text("description"))
         XCTAssertEqual(restored.reminders.first?.fire_at,graph.reminders.first?.fire_at); XCTAssertTrue(restored.exceptions[0].cancelled)
 
-        let store = try LocalStore(path:location()), calendar = Graph.new("calendar")
+        let store = try LocalStore(path:location()); var calendar = Graph.new("calendar"); calendar.set("id","calendar_fixture")
         try store.apply(snapshot([RecordVersion(kind:"calendar",id:calendar.id,revision:1,value:calendar),RecordVersion(kind:"event",id:graph.id,revision:2,value:graph)],cursor:2))
-        try store.importEvents([restored])
+        try store.importEvents(store.previewEvents([restored],targetCalendarID:calendar.id))
         let mutation = try XCTUnwrap(store.uploads().first)
         XCTAssertEqual(mutation.id,graph.id); XCTAssertEqual(mutation.value?.text("ics_uid"),"urn:uuid:external_uid@calendar")
         XCTAssertEqual(store.records.filter { $0.kind == "event" }.count,1)
