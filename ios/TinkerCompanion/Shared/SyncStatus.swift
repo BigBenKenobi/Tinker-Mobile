@@ -15,3 +15,35 @@ struct SyncStatus: View {
     }
 }
 
+
+// Compact cloud indicator reads sync coordination and local pending/conflict state.
+// The shell opens Companion for details; rendering never initiates network work.
+enum CloudSyncState {
+    case synced, pending, error
+    var badge: String {
+        switch self {
+        case .synced: return "checkmark"
+        case .pending: return "clock"
+        case .error: return "exclamationmark"
+        }
+    }
+    var label: String {
+        switch self {
+        case .synced: return "Connected and synced"
+        case .pending: return "Pending syncs"
+        case .error: return "Sync error or unavailable connection"
+        }
+    }
+}
+struct CloudSyncIndicator: View {
+    @ObservedObject var model: AppModel
+    var body: some View {
+        Image(systemName: "cloud").font(.system(size: 20, weight: .regular))
+            .overlay(alignment: .bottomTrailing) {
+                Image(systemName: model.cloudSyncStatus.badge)
+                    .font(.system(size: 8, weight: .bold))
+                    .padding(3).background(.background, in: Circle())
+                    .offset(x: 4, y: 3)
+            }.accessibilityHidden(true)
+    }
+}

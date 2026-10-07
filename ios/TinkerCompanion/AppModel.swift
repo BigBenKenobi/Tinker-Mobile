@@ -14,6 +14,16 @@ import Combine
     @Published private(set) var pairing: Pairing?
     @Published private(set) var connection = "Offline — local editing available"
     @Published private(set) var syncing = false
+    @Published private(set) var syncFailure: String?
+    @Published private(set) var hasCompletedSync = false
+    /// A checkmark requires a successful sync on the current reachable connection.
+    var cloudSyncStatus: CloudSyncState {
+        if syncing { return .pending }
+        if syncFailure != nil || !store.conflicts.isEmpty { return .error }
+        if pairing == nil || !localNetwork { return .error }
+        if store.pendingCount > 0 || !hasCompletedSync { return .pending }
+        return .synced
+    }
     @Published var error: String?
     private var active = false
     private var foregroundTask: Task<Void,Never>?
@@ -33,6 +43,7 @@ import Combine
             let available = path.status == .satisfied && (path.usesInterfaceType(.wifi) || path.usesInterfaceType(.wiredEthernet))
             Task { @MainActor in
                 self?.localNetwork = available
+                if !available { self?.hasCompletedSync = false }
                 if self?.active == true { await self?.sync() }
             }
         }
@@ -72,7 +83,7 @@ import Combine
         guard !syncing else { error = "Wait for the current sync to finish before unpairing"; return }
         do {
             try PairingKeychain.remove(); pairing = nil; try store.resetSyncCursor(); await notifications.cancelAll()
-            connection = "Unpaired — local edits retained"; error = nil
+            connection = "Unpaired — local edits retained"; error = nil; syncFailure = nil; hasCompletedSync = false
         } catch { self.error = error.localizedDescription }
     }
     func save(_ graph: Graph, observedRevision: Int? = nil) throws {
@@ -95,7 +106,7 @@ import Combine
         guard !syncing else { return }
         guard var paired = pairing else { connection = "Unpaired — local editing available"; return }
         guard localNetwork else { connection = "Offline — waiting for the same Wi-Fi network"; return }
-        syncing = true; connection = "Syncing…"; defer { syncing = false }
+        syncing = true; syncFailure = nil; connection = "Syncing…"; defer { syncing = false }
         do {
             if let discovered = discovery.endpoints[paired.server_id], discovered != paired.endpoint {
                 // A discovery candidate is accepted only after pinned transport
@@ -117,10 +128,10 @@ import Combine
             }
             try await pull(transport)
             try PairingKeychain.save(paired); pairing = paired
-            connection = "Connected · " + Date().formatted(date:.omitted,time:.shortened); error = nil
+            connection = "Connected · " + Date().formatted(date:.omitted,time:.shortened); error = nil; syncFailure = nil; hasCompletedSync = true
             await reconcileReminders()
         } catch is CancellationError { connection = "Sync paused — edits saved locally" }
-        catch { connection = "Disconnected — edits saved locally"; self.error = error.localizedDescription }
+        catch { connection = "Disconnected — edits saved locally"; hasCompletedSync = false; syncFailure = error.localizedDescription; self.error = error.localizedDescription }
     }
     private func pull(_ transport: Transport) async throws {
         for _ in 0..<100 {

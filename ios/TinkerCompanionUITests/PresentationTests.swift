@@ -43,7 +43,7 @@ import UIKit
         XCTAssertTrue(fullyVisible(),"Unreachable destination: " + route)
         button.tap()
         let title = ["new_chat":"Tinker","search":"Search","email":"Email","tools":"Tools","brain":"Brain","calendar":"Calendar","compare":"Model Compare","cookbook":"Cookbook","research":"Deep Research","gallery":"Gallery","library":"Library","notes":"Notes","tasks":"Tasks","companion":"Companion","theme":"Theme","settings":"Settings","account":"Account","model_selector":"Models"][route]!
-        let arrived = app.navigationBars[title].waitForExistence(timeout:5)
+        let arrived = route == "new_chat" ? app.staticTexts["home.title"].waitForExistence(timeout:5) : app.navigationBars[title].waitForExistence(timeout:5)
         if !arrived { print("TINKER_UI_HIERARCHY_BEGIN"); print(app.debugDescription); print("TINKER_UI_HIERARCHY_END") }
         XCTAssertTrue(arrived,"Expected destination: " + title)
     }

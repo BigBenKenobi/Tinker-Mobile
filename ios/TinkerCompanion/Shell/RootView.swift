@@ -20,6 +20,24 @@ struct RootView: View {
                 destination(PhoneDestination(rawValue:presentation.destination) ?? .home)
                     .scrollContentBackground(.hidden)
                     .background(presentation.theme.color("background").opacity(["new_chat","theme"].contains(presentation.destination) ? 0 : 1))
+                    .toolbar(presentation.destination == "new_chat" ? .hidden : .visible, for: .navigationBar)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        if presentation.destination == "new_chat" {
+                            HStack {
+                                Button { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil); withAnimation { drawer.toggle() } } label: {
+                                    Image(systemName:"line.3.horizontal").font(.title3)
+                                }.buttonStyle(.plain).frame(width:44,height:44)
+                                    .accessibilityLabel("Tools").accessibilityIdentifier("shell.tools")
+                                Spacer()
+                                Button { presentation.navigate("companion") } label: {
+                                    CloudSyncIndicator(model:model)
+                                }.buttonStyle(.plain).frame(width:44,height:44)
+                                    .accessibilityLabel("Sync: " + model.cloudSyncStatus.label)
+                                    .accessibilityHint("Open companion for connection details")
+                                    .accessibilityIdentifier("shell.sync")
+                            }.padding(.horizontal,16)
+                        }
+                    }
                     .toolbar {
                         ToolbarItem(placement:.topBarLeading) {
                             Button { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil); withAnimation { drawer.toggle() } } label: { Label("Tools",systemImage:"line.3.horizontal") }
@@ -27,7 +45,7 @@ struct RootView: View {
                         }
                         ToolbarItem(placement:.topBarTrailing) {
                             Button { presentation.navigate("companion") } label: {
-                                Image(systemName:model.syncing ? "arrow.triangle.2.circlepath" : "iphone.and.arrow.forward")
+                                CloudSyncIndicator(model:model)
                             }.accessibilityLabel("Companion: " + model.connection).frame(minWidth:44,minHeight:44)
                         }
                     }
