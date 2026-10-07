@@ -1,15 +1,151 @@
 {
   "format_version": 1,
-  "status": "candidate_under_validation",
+  "status": "native_verified_physical_acceptance_pending",
   "candidate_branch": "ui/minimal-chat-sync-status",
-  "mobile_source_sha": null,
-  "matching_desktop_contract_sha": "b49b68bc6e4da6b3b5f0a3fc5c42b2c75435c39a",
-  "desktop_local_test_sha": "9ef160498b383c1f4b2f8ef1c8ee1ed924205d10",
+  "mobile_source_sha": "db007a3390c8a2ff25e511f615d4e5ff0b8f713c",
+  "build_number": "59",
+  "build_inputs_sha256": "c2869b80aa8c1bb536117ee984e6cda0e9d4d9d25f9a52d7d4ff2107d846d454",
+  "metadata_note": "This record can be committed after the tested candidate. A documentation-only head with the same build-input digest does not create a new installed candidate.",
+  "matching_desktop_sha": "9ef160498b383c1f4b2f8ef1c8ee1ed924205d10",
+  "contract_reference_sha": "b49b68bc6e4da6b3b5f0a3fc5c42b2c75435c39a",
   "protocol_version": 2,
   "desktop_schema_version": 5,
-  "local_checks": {"desktop_companion_calendar_tests": 10, "project_generator_tests": 3},
-  "native_runs": [],
-  "visual_review": "pending",
-  "physical_acceptance": "pending",
-  "baseline_merge_approved": false
+  "contract_sha256": "33f106af45298e80c7776875b7a4281d0d571f432573c98c839ee8d2d1f703af",
+  "fixture_sha256": "b23a56b2a59a820a2cfb3cfa56a251bb38bc3296d74616ff99ed26e0573228c5",
+  "local_checks": {
+    "desktop_companion_calendar_tests": {
+      "passed": 10,
+      "command": "QT_QPA_PLATFORM=offscreen python3 -m pytest tests/test_companion.py tests/test_calendar_recurrence_port.py tests/test_calendar_ics_port.py -q",
+      "platform": "local Linux",
+      "source_sha": "9ef160498b383c1f4b2f8ef1c8ee1ed924205d10"
+    },
+    "project_generator_tests": {
+      "passed": 3
+    },
+    "swift_grammar": {
+      "files": 37,
+      "errors": 0,
+      "is_native_build": false
+    },
+    "shared_contract_and_fixture": "byte-identical to the matching desktop"
+  },
+  "native_runs": [
+    {
+      "run_id": 37645014416,
+      "source_sha": "07bfef95f4844e370a784ad133b236bbc6e0bf6a",
+      "scope": "companion",
+      "result": "success",
+      "tests_per_phone": 28
+    },
+    {
+      "run_id": 37645017150,
+      "source_sha": "3be794b866403ba2900175f153ee541dff01fcfb",
+      "scope": "full-interface",
+      "result": "success",
+      "unit_tests_per_phone": 39,
+      "ui_tests_per_phone": 4,
+      "screenshots_per_phone": 39
+    },
+    {
+      "run_id": 37647511855,
+      "source_sha": "db007a3390c8a2ff25e511f615d4e5ff0b8f713c",
+      "scope": "integrated candidate",
+      "result": "success",
+      "unit_tests_per_phone": 45,
+      "ui_smoke_tests_per_phone": 2,
+      "manifests": {
+        "small": "db007a3-small.json",
+        "large": "db007a3-large.json"
+      }
+    },
+    {
+      "run_id": 37647505368,
+      "source_sha": "db007a3390c8a2ff25e511f615d4e5ff0b8f713c",
+      "scope": "unsigned device",
+      "result": "success",
+      "manifest": "db007a3-device.json"
+    }
+  ],
+  "device_payload": {
+    "sha256": "e6cf310924a79d1b7037eb1177075648801e84359dc3949123b25aeeb99573bb",
+    "bytes": 962462,
+    "bundle_id": "com.bigbenkenobi.tinker-companion",
+    "minimum_ios": "17.0",
+    "architecture": "arm64",
+    "signed": false,
+    "local_integrity_verified": true
+  },
+  "artifacts": [
+    {
+      "id": 11496001712,
+      "name": "validation-large",
+      "size_in_bytes": 1064,
+      "digest": "sha256:1b446c8a3424b5af65ebcf8fd5c713f001ffe91ffaa482f480b46115c47b7d8f",
+      "created_at": "2026-10-07T16:05:42Z",
+      "expires_at": "2027-01-05T15:52:34Z",
+      "run_id": 37647511855,
+      "url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647511855/artifacts/11496001712"
+    },
+    {
+      "id": 11495950829,
+      "name": "xcode-results-small",
+      "size_in_bytes": 3004951,
+      "digest": "sha256:e57f3700c6dd0194e836262a70afaa18c0417463582dd8d67a0bccfd2ba6394f",
+      "created_at": "2026-10-07T16:00:31Z",
+      "expires_at": "2026-10-21T16:00:29Z",
+      "run_id": 37647511855,
+      "url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647511855/artifacts/11495950829"
+    },
+    {
+      "id": 11495762327,
+      "name": "xcode-results-large",
+      "size_in_bytes": 3025558,
+      "digest": "sha256:d6a15d7402e664e3094ace8d6826e1a062b588f4e6a0ceb2ceccf89d89d105bc",
+      "created_at": "2026-10-07T16:05:43Z",
+      "expires_at": "2026-10-21T16:05:42Z",
+      "run_id": 37647511855,
+      "url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647511855/artifacts/11495762327"
+    },
+    {
+      "id": 11495117226,
+      "name": "validation-small",
+      "size_in_bytes": 1067,
+      "digest": "sha256:a363d9a887a76923b15fb8cfb7527ada07a2f9cce055049543f1ffb2898f2920",
+      "created_at": "2026-10-07T16:00:29Z",
+      "expires_at": "2027-01-05T15:52:34Z",
+      "run_id": 37647511855,
+      "url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647511855/artifacts/11495117226"
+    },
+    {
+      "id": 11495155584,
+      "name": "TinkerCompanion-unsigned-device-ipa",
+      "size_in_bytes": 955967,
+      "digest": "sha256:19cd744fa11294bb6f37b696da4fe3e2fa901a1b133068dbbf3d76261a39a375",
+      "created_at": "2026-10-07T15:53:26Z",
+      "expires_at": "2026-10-21T15:53:24Z",
+      "run_id": 37647505368,
+      "url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647505368/artifacts/11495155584"
+    },
+    {
+      "id": 11495120673,
+      "name": "validation-unsigned-device",
+      "size_in_bytes": 655,
+      "digest": "sha256:592258e49dc904425a62468e0fd469bfa3c3de4787640ba2ce8d5fae29ee02cd",
+      "created_at": "2026-10-07T15:53:25Z",
+      "expires_at": "2027-01-05T15:52:33Z",
+      "run_id": 37647505368,
+      "url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647505368/artifacts/11495120673"
+    }
+  ],
+  "visual_review": "pending for integrated candidate; capture/export is not visual acceptance",
+  "physical_acceptance": "pending owner session; see docs/PHYSICAL-ACCEPTANCE.md",
+  "baseline_merge_approved": false,
+  "main_protection": "prepared in docs/maintenance/main-protection.json; apply after accepted baseline",
+  "remaining_work": [
+    "Physical upgrade, pairing retention, sync, Files, reminders, conflicts, VoiceOver, layout and battery acceptance",
+    "Baseline consolidation and main protection after owner approval",
+    "Minimum iOS 17 runtime validation",
+    "Broader physical-device profiles before recurrence/storage restructuring",
+    "License choice remains with the owner"
+  ]
 }

@@ -9,10 +9,25 @@ full-interface and minimal-home descendants without merging either application P
 
 | Review branch | Purpose | Acceptance |
 |---|---|---|
-| `feat/iphone-companion-m1` / PR #1 | Native companion plus safe local saves and reviewed ICS imports | Native regression results required; physical approval pending |
-| `feat/iphone-full-interface` / draft PR #2 | Interface with the same data-safety fixes | Native and physical approval pending |
-| `ui/minimal-chat-sync-status` | Integrated minimal home, recovery/build identity and measured quiet-work changes | Candidate for consolidated physical session |
+| `feat/iphone-companion-m1` / PR #1 | Native companion plus safe local saves and reviewed ICS imports | 28/28 native tests per phone passed; physical approval pending |
+| `feat/iphone-full-interface` / draft PR #2 | Interface with the same data-safety fixes | 43/43 native tests per phone passed; physical approval pending |
+| `ui/minimal-chat-sync-status` | Integrated minimal home, recovery/build identity and measured quiet-work changes | 47/47 native tests per phone and unsigned build passed; physical session pending |
 | `main` | Repository entry point | Application baseline not accepted yet |
+
+## Current candidate
+
+**Build 59**, source `db007a3390c8a2ff25e511f615d4e5ff0b8f713c`:
+[native regressions](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647511855)
+and [unsigned device build](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647505368)
+pass. Each phone ran 45 unit tests and two UI smoke cases, with zero failures,
+skips or expected failures. The IPA payload, bundle ID, arm64 executable and
+embedded source/build were independently checked after download. This candidate
+supersedes the intermediate build 55; physical acceptance is still pending.
+
+[Measured workloads](MEASUREMENTS.md) and the [prepared main protection payload](maintenance/main-protection.json)
+are separate from physical acceptance. The shared contract's opening schema-four
+wording describes its origin; its detailed schema-five definition and current
+fixture govern protocol 2. Contract bytes remain aligned with the desktop.
 
 ## Authoritative build evidence
 

@@ -23,3 +23,9 @@ a required second reviewer on a repository with only one active maintainer.
 Use docs/PHYSICAL-ACCEPTANCE.md before baseline consolidation. Folder splitting,
 recurrence fast-forwarding and off-main-actor storage are separate measured work;
 they must not change IDs, ownership, conflict retention or sync ordering.
+
+The proposed post-acceptance branch-protection payload is
+[`docs/maintenance/main-protection.json`](docs/maintenance/main-protection.json).
+It is prepared for review and has not been applied while main remains a
+pre-acceptance entry point. Apply it after baseline acceptance using GitHub's
+branch-protection API, then verify both check contexts on a normal PR.

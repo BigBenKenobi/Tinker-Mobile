@@ -1,5 +1,10 @@
 # Physical candidate acceptance
 
+Prepared candidate: **build 59**, source `db007a3`.
+[Unsigned IPA artifact](https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647505368/artifacts/11495155584).
+Payload SHA256: `e6cf310924a79d1b7037eb1177075648801e84359dc3949123b25aeeb99573bb`.
+See [current validation](validation/current.json) for the full source/digests/results.
+
 Record the candidate source SHA/build number from Companion, the IPA payload
 SHA256 from its manifest, desktop SHA, iPhone model/iOS version, installer/signing
 method, date, and tester. A screenshot archive or Simulator result cannot fill
