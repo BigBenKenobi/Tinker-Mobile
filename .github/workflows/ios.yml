@@ -61,11 +61,11 @@ jobs:
           python3 - <<'PY'
           import json, os
           data = json.load(open('/tmp/tinker-simulators.json'))
-          devices = [d for runtime, values in data['devices'].items() if '.iOS-' in runtime for d in values if d['name'].startswith('iPhone')]
+          devices = [d for runtime, values in data['devices'].items() if runtime.endswith('iOS-18-5') for d in values if d['name'].startswith('iPhone')]
           if not devices:
               raise SystemExit('No iPhone Simulator installed')
           size = "${{ matrix.phone }}"
-          preferred = ['iPhone SE (3rd generation)', 'iPhone 16', 'iPhone 16 Pro'] if size == 'small' else ['iPhone 16 Pro Max', 'iPhone 16 Plus']
+          preferred = ['iPhone SE (3rd generation)'] if size == 'small' else ['iPhone 16 Pro Max']
           selected = next((d for name in preferred for d in devices if d['name'] == name), None)
           if selected is None:
               raise SystemExit('No supported ' + size + ' iPhone Simulator installed')
@@ -139,7 +139,7 @@ jobs:
         run: |
           xcodebuild -version > "$RUNNER_TEMP/xcode-version.txt"
           cat "$RUNNER_TEMP/xcode-version.txt"
-          grep -q '^Xcode 26\.' "$RUNNER_TEMP/xcode-version.txt"
+          grep -Fx 'Xcode 26.6' "$RUNNER_TEMP/xcode-version.txt"
       - name: Build unsigned iPhone app
         run: |
           xcodebuild -project ios/TinkerCompanion.xcodeproj \

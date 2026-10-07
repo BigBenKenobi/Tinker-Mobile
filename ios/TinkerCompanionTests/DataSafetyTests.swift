@@ -73,6 +73,7 @@ import XCTest
         original.reminders = [Reminder(id:"alarm_owned",owner_kind:"event",owner_id:original.id,fire_at:original.text("start_at"),message:"Remember",notification_owner:"desktop",completed:true)]
         original.exceptions = [EventException(id:"exception_owned",event_id:original.id,occurrence_at:original.text("start_at"),cancelled:true,start_at:nil,end_at:nil,title:nil)]
         let store = try store([a,b,original])
+        let savedExceptionID = try XCTUnwrap(row(store,original).value?.exceptions.first?.id)
         var imported = original; imported.set("id","event_imported"); imported.set("title","Imported title")
         imported.reminders[0].id = "alarm_new"; imported.reminders[0].notification_owner = "phone"; imported.reminders[0].completed = false
         imported.exceptions[0].id = "exception_new"
@@ -86,7 +87,7 @@ import XCTest
         XCTAssertEqual(result.reminders[0].owner_id,original.id)
         XCTAssertEqual(result.reminders[0].notification_owner,"desktop")
         XCTAssertTrue(result.reminders[0].completed)
-        XCTAssertEqual(result.exceptions[0].id,"exception_owned")
+        XCTAssertEqual(result.exceptions[0].id,savedExceptionID)
         XCTAssertEqual(result.exceptions[0].event_id,original.id)
     }
     func testPendingEditBlocksEntireImportIncludingUnrelatedNewEvent() throws {
