@@ -122,6 +122,8 @@ struct Graph: Codable, Equatable, Identifiable {
     init(kind: String, record: [String: JSONValue], reminders: [Reminder], exceptions: [EventException]) {
         self.kind = kind; self.record = record; self.reminders = reminders; self.exceptions = exceptions
     }
+    /// Decode a complete native graph, rejecting shape/ownership errors before
+    /// deriving editable dates and child projections. No durable state is changed.
     init(from decoder: Decoder) throws {
         // Validate the exact native wire object before projecting it into editable
         // fields. Codable's keyed containers otherwise ignore unknown keys and

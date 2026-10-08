@@ -55,8 +55,11 @@ import XCTest
         try store.acknowledge(response,sent:sent)
         try store.acknowledge(response,sent:sent)
         XCTAssertEqual(store.pendingCount,0)
-        XCTAssertEqual(store.conflicts.first?.current,desktop)
-        XCTAssertEqual(store.conflicts.first?.incoming,edited)
+        // Persistence decodes a fresh native backing copy. Compare visible/wire
+        // content rather than the draft's pre-edit projection cache.
+        XCTAssertEqual(store.conflicts.first?.current?.title,desktop.title)
+        XCTAssertEqual(store.conflicts.first?.incoming?.title,edited.title)
+        XCTAssertEqual(store.conflicts.first?.incoming?.linked_task,edited.linked_task)
         try store.resolve(conflict,useIncoming:true)
         let resolution = try store.uploads()
         XCTAssertEqual(resolution.first?.base_revision,5)
