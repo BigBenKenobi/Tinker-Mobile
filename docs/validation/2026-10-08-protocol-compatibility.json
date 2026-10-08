@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "status": "local_gates_pass_new_native_and_hosted_verification_pending",
+  "status": "implementation_and_local_desktop_native_mobile_verification_complete",
   "date": "2026-10-08",
   "timezone": "Pacific/Auckland",
   "desktop": {
@@ -13,7 +13,12 @@
     "successful_subtests": 7,
     "junit_aggregate": 257,
     "skips": 0,
-    "hosted_status": "pending account billing/spending gate"
+    "hosted_status": "pending account billing/spending gate",
+    "hosted_run": {
+      "id": 37764579583,
+      "conclusion": "failure",
+      "note": "Both Python jobs failed before any steps; prior verified billing/spending gate remains unresolved."
+    }
   },
   "mobile": {
     "repository": "BigBenKenobi/Tinker-Mobile",
@@ -24,13 +29,62 @@
     "swift_grammar_files": 37,
     "swift_grammar_errors": 0,
     "new_native_xctest_cases": 3,
-    "native_verification": "pending; syntax is not compilation or behavior",
+    "native_verification": "success on small and large iOS 18.5 Simulators; physical acceptance remains pending",
     "new_build_number": null,
     "installed_build_number": "59",
     "installed_built_source_sha": "db007a3390c8a2ff25e511f615d4e5ff0b8f713c",
     "historical_manifest": "docs/validation/current.json",
     "physical_acceptance": "pending",
-    "test_note": "Persisted conflict assertions compare content independently of the draft's native projection cache."
+    "test_note": "Persisted conflict assertions compare content independently of the draft's native projection cache.",
+    "simulator_built_source_sha": "e98db92799232b1e9952111f154040217551ce83",
+    "simulator_build_number": "63",
+    "native_run": {
+      "id": 37764587608,
+      "url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37764587608",
+      "conclusion": "success",
+      "xcode": "16.4 (16F6)",
+      "runtime": "iOS 18.5",
+      "phones": [
+        "iPhone SE (3rd generation)",
+        "iPhone 16 Pro Max"
+      ],
+      "unit_tests_per_phone": 48,
+      "ui_smoke_tests_per_phone": 2,
+      "failures": 0,
+      "full_visual_capture": false,
+      "unsigned_device_job": "skipped"
+    },
+    "artifacts": [
+      {
+        "id": 11544771512,
+        "name": "validation-small",
+        "digest": "sha256:3cdd892eb5c28632e95eaf6f1610e4c60222439fd5cacbffe5a4c65ffa63b8c3",
+        "expires_at": "2027-01-06T10:36:31Z"
+      },
+      {
+        "id": 11544398559,
+        "name": "xcode-results-small",
+        "digest": "sha256:facf3454973a1d75e1030e81dea636cf2d59e0031165d86a5e24e4c9b70ff097",
+        "expires_at": "2026-10-22T10:52:38Z"
+      },
+      {
+        "id": 11544332349,
+        "name": "xcode-results-large",
+        "digest": "sha256:2b3a8bb7524e778d45734b4ede4d19d6a219de7303e34535a29e7da49c23abda",
+        "expires_at": "2026-10-22T10:45:09Z"
+      },
+      {
+        "id": 11543948039,
+        "name": "validation-large",
+        "digest": "sha256:4f9cee8880ceac44e73d2c539073a74eb783ca141e664d86a998b4f29e9ab7d7",
+        "expires_at": "2027-01-06T10:36:31Z"
+      }
+    ],
+    "superseded_native_run": {
+      "id": 37764222110,
+      "conclusion": "cancelled",
+      "note": "Initial cache-sensitive conflict test assertions were corrected to compare persisted content; all three compatibility methods pass in run 37764587608."
+    }
   },
   "protocol_version": 2,
   "canonical_repository": "BigBenKenobi/Tinker-Mobile",
@@ -57,5 +111,6 @@
   },
   "merge_approved": false,
   "step13_approved": false,
-  "identity_note": "Code SHAs precede evidence-only commits. Draft PR heads identify the final review revisions. Historical build 59 evidence is retained unchanged and does not establish verification of the new mobile code."
+  "identity_note": "Native mobile run verifies source e98db92799232b1e9952111f154040217551ce83 and Simulator build 63. Final evidence commits change narrative docs only; app, contracts, scripts, workflows and test inputs remain byte-identical. Installed phone source/build is recorded independently.",
+  "paired_hosted_acceptance": "pending desktop hosted gate; no paired hosted or physical acceptance claimed"
 }

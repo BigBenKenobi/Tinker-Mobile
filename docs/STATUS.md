@@ -87,7 +87,10 @@ local schema version changes. See ../contracts/COMPATIBILITY.md and
 validation/2026-10-08-protocol-compatibility.json for paired source/build identity.
 
 Nine local Python gate/project tests pass; 37 Swift sources parse without grammar
-errors. New XCTest compilation/execution is pending a Mac/Simulator result.
+errors. Native run 37764587608 passes on both small/large iOS 18.5 Simulators with
+Xcode 16.4: 48 unit tests plus two UI smoke tests per phone, zero failures.
+Simulator built source e98db92799232b1e9952111f154040217551ce83/build 63 is
+separate from the installed physical candidate; all three new XCTest methods pass.
 Historical build 59/source db007a3 remains the installed candidate; this review
 does not identify a newly built or physically accepted phone app. Desktop hosted
 checks remain subject to the account billing/spending gate. Keep drafts unmerged.
