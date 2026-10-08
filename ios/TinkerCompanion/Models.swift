@@ -122,7 +122,14 @@ struct Graph: Codable, Equatable, Identifiable {
     init(kind: String, record: [String: JSONValue], reminders: [Reminder], exceptions: [EventException]) {
         self.kind = kind; self.record = record; self.reminders = reminders; self.exceptions = exceptions
     }
+    /// Decode a complete native graph, rejecting shape/ownership errors before
+    /// deriving editable dates and child projections. No durable state is changed.
     init(from decoder: Decoder) throws {
+        // Validate the exact native wire object before projecting it into editable
+        // fields. Codable's keyed containers otherwise ignore unknown keys and
+        // optional decoding hides missing explicit-null fields.
+        let wire = try decoder.singleValueContainer().decode([String: JSONValue].self)
+        try WireGraphShape.validate(wire)
         let c = try decoder.container(keyedBy: CodingKeys.self)
         kind = try c.decode(String.self, forKey: .kind)
         native = try c.decode([String: JSONValue].self, forKey: .record)
@@ -280,6 +287,8 @@ struct Graph: Codable, Equatable, Identifiable {
         }
         return parts.joined(separator:";")
     }
+    /// Validate an editable graph and its encoded native ownership unit before a
+    /// LocalStore transaction. Failure leaves the draft available to its editor.
     func validate() throws {
         try Self.identifier(id)
         guard ["note","task","calendar","event"].contains(kind) else { throw CompanionError("Unsupported item kind") }
@@ -316,6 +325,10 @@ struct Graph: Codable, Equatable, Identifiable {
         guard reminders.count <= 1000, exceptions.count <= 1000, activity.count <= 1000 else { throw CompanionError("Too many linked records") }
         guard reminders.allSatisfy({ kind == "event" && $0.owner_id == id && $0.notification_owner == "phone" || kind == "event" && $0.owner_id == id && $0.notification_owner == "desktop" }),
               exceptions.allSatisfy({ kind == "event" && $0.event_id == id }) else { throw CompanionError("Invalid linked record ownership") }
+        // Draft-only projections are not wire columns. Re-encode them once so
+        // the same shape guard checks local edits and downloaded native graphs.
+        let wire = try JSONDecoder().decode([String: JSONValue].self,from:JSONEncoder().encode(self))
+        try WireGraphShape.validate(wire)
     }
     static func identifier(_ value: String) throws {
         guard value.range(of:"^[A-Za-z0-9_.@-]{1,200}$",options:.regularExpression) != nil else { throw CompanionError("Invalid stable ID") }
@@ -329,6 +342,113 @@ struct Graph: Codable, Equatable, Identifiable {
                 try checkMetadata(child)
             }
         } else if let array = value as? [Any] { for child in array { try checkMetadata(child) } }
+    }
+}
+
+/// Stateless wire boundary used by Graph decoding, before any durable store write.
+/// It checks schema-five scalar shape and parent/child ownership without UI fields
+/// or SQLite. Semantic date/metadata validation remains with Graph.validate().
+enum WireGraphShape {
+    private static let fields: [String: Set<String>] = [
+        "note": ["id","title","body","archived","pinned","created_at","updated_at","metadata_json"],
+        "task": ["id","title","description","status","due_at","created_at","updated_at","metadata_json","kind","timezone_name","recurrence","recurrence_anchor","paused","last_fired_at","note_id","notification_owner"],
+        "calendar": ["id","name","color","visible","sort_order"],
+        "event": ["id","calendar_id","title","all_day","start_value","end_value","timezone_name","location","notes","recurrence_frequency","recurrence_interval","recurrence_weekdays","recurrence_count","recurrence_until","ics_uid","created_at","updated_at"],
+        "activity": ["id","task_id","occurrence_at","created_at","detail"],
+        "exceptions": ["event_id","original_start","kind","replacement_json"],
+        "reminders": ["id","event_id","fire_at","message","notification_owner","completed"]
+    ]
+    private static let booleans: Set<String> = ["archived","pinned","paused","visible","all_day","completed"]
+    private static let integers: Set<String> = ["sort_order","recurrence_interval","recurrence_count"]
+    private static let nullable: Set<String> = ["due_at","recurrence_anchor","last_fired_at","note_id","recurrence_frequency","recurrence_interval","recurrence_weekdays","recurrence_count","recurrence_until","replacement_json"]
+
+    /// Reject missing/unknown keys, incorrect scalar types and oversized text.
+    private static func row(_ value: JSONValue?, as kind: String) throws -> [String: JSONValue] {
+        guard case .object(let row) = value, Set(row.keys) == fields[kind] else {
+            throw CompanionError("Invalid native graph fields")
+        }
+        for (key, value) in row {
+            if value == .null && nullable.contains(key) { continue }
+            if booleans.contains(key) {
+                guard case .bool = value else { throw CompanionError("Expected native boolean") }
+            } else if integers.contains(key) {
+                guard case .number = value else { throw CompanionError("Expected native integer") }
+            } else {
+                guard case .string(let text) = value, !text.contains("\0"), text.utf8.count <= 262144 else {
+                    throw CompanionError("Invalid native text field")
+                }
+            }
+        }
+        return row
+    }
+
+    /// A linked task belongs exclusively to its note; independent tasks have null
+    /// note_id. Validate persisted scheduler enums before accepting child activity.
+    private static func task(_ value: [String: JSONValue], note: String?) throws {
+        try Graph.identifier(value["id"]?.text ?? "")
+        guard value["note_id"] == (note.map(JSONValue.string) ?? .null),
+              ["pending","completed","cancelled","running","failed"].contains(value["status"]?.text ?? ""),
+              ["todo","reminder"].contains(value["kind"]?.text ?? ""),
+              ["none","daily","weekly","monthly","yearly"].contains(value["recurrence"]?.text ?? ""),
+              ["desktop","phone"].contains(value["notification_owner"]?.text ?? ""),
+              TimeZone(identifier:value["timezone_name"]?.text ?? "") != nil else {
+            throw CompanionError("Invalid native task ownership or state")
+        }
+        if value["kind"] == .string("todo") && value["recurrence"] != .string("none") {
+            throw CompanionError("Only reminders may recur")
+        }
+        if value["kind"] == .string("reminder") && value["due_at"] == .null {
+            throw CompanionError("Reminder needs a due date")
+        }
+    }
+
+    /// Check the unprojected aggregate as one ownership unit. Child identity sets
+    /// are bounded to 1000 entries; malformed input throws before projection/SQL.
+    static func validate(_ wire: [String: JSONValue]) throws {
+        guard Set(wire.keys) == Set(["kind","record","linked_task","activity","exceptions","reminders"]),
+              case .string(let kind) = wire["kind"], ["note","task","calendar","event"].contains(kind) else {
+            throw CompanionError("Invalid native graph envelope")
+        }
+        let record = try row(wire["record"], as:kind)
+        let id = record["id"]?.text ?? ""; try Graph.identifier(id)
+        var activityOwner: String? = kind == "task" ? id : nil
+        if kind == "task" { try task(record, note:nil) }
+        if wire["linked_task"] != .null {
+            guard kind == "note" else { throw CompanionError("Only notes own linked tasks") }
+            let linked = try row(wire["linked_task"], as:"task")
+            try task(linked, note:id); activityOwner = linked["id"]?.text
+        }
+        for collection in ["activity","exceptions","reminders"] {
+            guard case .array(let children) = wire[collection], children.count <= 1000 else {
+                throw CompanionError("Invalid native child collection")
+            }
+            var identities = Set<String>()
+            for child in children {
+                let value = try row(child, as:collection)
+                let key = collection == "exceptions" ? "original_start" : "id"
+                guard identities.insert(value[key]?.text ?? "").inserted else {
+                    throw CompanionError("Duplicate native child")
+                }
+                if collection == "activity" {
+                    guard let owner = activityOwner, value["task_id"] == .string(owner) else {
+                        throw CompanionError("Activity belongs to another task")
+                    }
+                    try Graph.identifier(value["id"]?.text ?? "")
+                } else {
+                    guard kind == "event", value["event_id"] == .string(id) else {
+                        throw CompanionError("Child belongs to another event")
+                    }
+                    if collection == "reminders" {
+                        try Graph.identifier(value["id"]?.text ?? "")
+                        guard ["desktop","phone"].contains(value["notification_owner"]?.text ?? "") else {
+                            throw CompanionError("Invalid native alarm owner")
+                        }
+                    } else if !["cancelled","override"].contains(value["kind"]?.text ?? "") {
+                        throw CompanionError("Invalid native exception kind")
+                    }
+                }
+            }
+        }
     }
 }
 

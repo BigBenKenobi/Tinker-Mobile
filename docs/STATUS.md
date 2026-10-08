@@ -74,3 +74,23 @@ VoiceOver, layout and battery require the owner and a phone. Minimum iOS 17 runt
 coverage is separate from routine iOS 18.5 CI. Broader recurrence optimization and
 moving storage off MainActor require device profiles; no speed or battery claim is
 made solely from Simulator timing. Repository licensing is an owner decision.
+
+
+## Step 12 compatibility review
+
+The corrective Step 12 draft adds pinned public contract/schema digests and the
+shared 18-case synthetic corpus, plus three native XCTest cases for graph
+validation, offline conflict/deletion acknowledgement and all-day DST projection.
+Graph decoding rejects missing/unknown fields, incorrect scalar types, duplicate
+children and foreign linked-record ownership before projection. No protocol or
+local schema version changes. See ../contracts/COMPATIBILITY.md and
+validation/2026-10-08-protocol-compatibility.json for paired source/build identity.
+
+Nine local Python gate/project tests pass; 37 Swift sources parse without grammar
+errors. Native run 37764587608 passes on both small/large iOS 18.5 Simulators with
+Xcode 16.4: 48 unit tests plus two UI smoke tests per phone, zero failures.
+Simulator built source e98db92799232b1e9952111f154040217551ce83/build 63 is
+separate from the installed physical candidate; all three new XCTest methods pass.
+Historical build 59/source db007a3 remains the installed candidate; this review
+does not identify a newly built or physically accepted phone app. Desktop hosted
+checks remain subject to the account billing/spending gate. Keep drafts unmerged.

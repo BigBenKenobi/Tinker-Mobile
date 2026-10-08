@@ -43,6 +43,8 @@ def main():
         'build_inputs_sha256': input_digest(),
         'protocol_version': 2,
         'desktop_schema_version': 5,
+        'mobile_schema_version': 2,
+        'canonical_contract_sha': json.loads(Path('contracts/compatibility-v2.json').read_text())['canonical_sha'],
         'kind': args.kind,
         'run_id': os.environ.get('GITHUB_RUN_ID'),
         'run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
@@ -54,6 +56,7 @@ def main():
         'physical_acceptance': 'pending',
         'contract_sha256': hashlib.sha256(Path('contracts/SYNC-v2.md').read_bytes()).hexdigest(),
         'fixture_sha256': hashlib.sha256(Path('contracts/snapshot-v2.json').read_bytes()).hexdigest(),
+        'conformance_fixture_sha256': hashlib.sha256(Path('contracts/conformance-v2.json').read_bytes()).hexdigest(),
     }
     if args.summary and args.summary.exists():
         evidence['xctest'] = json.loads(args.summary.read_text())

@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "protocol_version": 2,
+  "desktop_schema_version": 5,
+  "mobile_schema_version": 2,
+  "canonical_repository": "BigBenKenobi/Tinker-Mobile",
+  "canonical_sha": "182e267e08eaf8d8266696e1920afe427e27ff44",
+  "sha256": {
+    "SYNC-v1.md": "3847bb6f0c400f850f373d8b19837f37525eb807f3bd3c265e9cd341255be43c",
+    "SYNC-v2.md": "8671ec368368c72943be9ec93325bf14cac52021e5e604ec04ad62ab68c79202",
+    "snapshot-v2.json": "b23a56b2a59a820a2cfb3cfa56a251bb38bc3296d74616ff99ed26e0573228c5",
+    "conformance-v2.json": "4e67f6481e9866a8bee107c217f068e9a4b094b5e61783bf833c9db908492845"
+  }
+}

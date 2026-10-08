@@ -1,6 +1,6 @@
 # Tinker companion sync v2
 
-Protocol two is the first contract against Tinker's schema-four Notes, Tasks, and native Calendar data. Version-one draft clients cannot pair: QR, pairing request/response, authenticated response, Bonjour TXT version and HTTP paths all use `2` (`/v2/pair`, `/v2/snapshot`, `/v2/changes`, `/v2/upload`). The previous [v1 contract](SYNC-v1.md) is historical only.
+Protocol two originated with schema-four Notes, Tasks, and native Calendar data. Its current wire graphs use desktop schema five (including `tasks.notification_owner`); the independent phone SQLite schema is two. These schema numbers are not the protocol version. Version-one draft clients cannot pair: QR, pairing request/response, authenticated response, Bonjour TXT version and HTTP paths all use `2` (`/v2/pair`, `/v2/snapshot`, `/v2/changes`, `/v2/upload`). The previous [v1 contract](SYNC-v1.md) is historical only.
 
 The desktop owns ordered revisions; the phone owns its offline SQLite store and durable outbox. An aggregate is `{"kind":...,"record":...,"linked_task":null|{...},"activity":[],"exceptions":[],"reminders":[]}`. A deletion is JSON null. The exact parent fields are Tinker's schema-five columns (schema-four fields plus `tasks.notification_owner`), with SQLite booleans carried as JSON booleans. Unknown or missing fields fail. IDs and event ICS UIDs stay stable.
 
