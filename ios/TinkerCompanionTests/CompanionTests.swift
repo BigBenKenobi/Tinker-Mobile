@@ -1,9 +1,93 @@
-// Xcode-only acceptance tests. These tests are checked in but remain unexecuted
-// until a Mac/Simulator is available; Linux syntax parsing is not an iOS build.
+// Native protocol/store regression tests, including the pinned public synthetic
+// conformance corpus. Each case owns a temporary profile. Historical Simulator
+// results and newly added tests are recorded separately; syntax is not a build.
 import XCTest
 @testable import TinkerCompanion
 
 @MainActor final class CompanionTests: XCTestCase {
+    /// Read only the synthetic public corpus packaged in the XCTest target.
+    private func conformance() throws -> [String: Any] {
+        let url = try XCTUnwrap(Bundle(for:Self.self).url(forResource:"conformance-v2",withExtension:"json"))
+        return try XCTUnwrap(JSONSerialization.jsonObject(with:Data(contentsOf:url)) as? [String:Any])
+    }
+
+    /// Native decoding and domain validation must agree with every shared case.
+    /// Missing fields and foreign children fail before projection or store writes.
+    func testSharedGraphConformanceCorpus() throws {
+        let fixture = try conformance()
+        XCTAssertEqual(fixture["protocol_version"] as? Int,2)
+        XCTAssertEqual(fixture["desktop_schema_version"] as? Int,5)
+        XCTAssertEqual(fixture["mobile_schema_version"] as? Int,2)
+        let cases = try XCTUnwrap(fixture["graphs"] as? [[String:Any]])
+        XCTAssertEqual(cases.count,18)
+        for item in cases {
+            let name = try XCTUnwrap(item["name"] as? String)
+            let data = try JSONSerialization.data(withJSONObject:try XCTUnwrap(item["value"]),options:[.fragmentsAllowed,.sortedKeys])
+            if item["valid"] as? Bool == true {
+                let graph = try JSONDecoder().decode(Graph?.self,from:data)
+                try graph?.validate()
+                XCTAssertEqual(graph?.kind, graph == nil ? nil : item["kind"] as? String,name)
+            } else {
+                XCTAssertThrowsError(try { let graph = try JSONDecoder().decode(Graph.self,from:data); try graph.validate() }(),name)
+            }
+        }
+    }
+
+    /// Consume the shared starting snapshot, retain offline/current conflict
+    /// graphs, resolve at the inspected revision and durably replay deletion ACKs.
+    func testSharedOfflineConflictDeletionScenario() throws {
+        let fixture = try conformance()
+        let scenario = try XCTUnwrap(fixture["scenario"] as? [String:Any])
+        let snapshotData = try JSONSerialization.data(withJSONObject:try XCTUnwrap(scenario["snapshot"]))
+        let seed = try JSONDecoder().decode(Snapshot.self,from:snapshotData)
+        let path = location(), store = try LocalStore(path:path)
+        try store.apply(seed)
+        let id = try XCTUnwrap(scenario["note_id"] as? String)
+        let initial = try XCTUnwrap(store.records.first { $0.id == id })
+        var edited = try XCTUnwrap(initial.value)
+        edited.set("title",try XCTUnwrap(scenario["edited_title"] as? String))
+        try store.edit(edited,kind:"note",id:id,expected:initial.editToken)
+        let sent = try store.uploads()
+        var desktop = try XCTUnwrap(initial.value)
+        desktop.set("title",try XCTUnwrap(scenario["desktop_title"] as? String))
+        let conflict = Conflict(id:"shared_conflict",kind:"note",record_id:id,current:desktop,incoming:edited,current_revision:5,resolved:false)
+        let response = UploadResponse(version:2,server_id:seed.server_id,results:[UploadResult(op_id:try XCTUnwrap(sent.first).op_id,status:"conflict",revision:5,conflict:conflict)])
+        try store.acknowledge(response,sent:sent)
+        try store.acknowledge(response,sent:sent)
+        XCTAssertEqual(store.pendingCount,0)
+        XCTAssertEqual(store.conflicts.first?.current,desktop)
+        XCTAssertEqual(store.conflicts.first?.incoming,edited)
+        try store.resolve(conflict,useIncoming:true)
+        let resolution = try store.uploads()
+        XCTAssertEqual(resolution.first?.base_revision,5)
+        XCTAssertEqual(resolution.first?.resolve_id,conflict.id)
+        try store.acknowledge(UploadResponse(version:2,server_id:seed.server_id,results:[UploadResult(op_id:try XCTUnwrap(resolution.first).op_id,status:"applied",revision:6,conflict:nil)]),sent:resolution)
+        let current = try XCTUnwrap(store.records.first { $0.id == id })
+        XCTAssertEqual(current.value?.linked_task?["id"]?.text,scenario["linked_task_id"] as? String)
+        try store.edit(nil,kind:"note",id:id,expected:current.editToken)
+        let deletion = try store.uploads()
+        XCTAssertNil(deletion.first?.value)
+        let ack = UploadResponse(version:2,server_id:seed.server_id,results:[UploadResult(op_id:try XCTUnwrap(deletion.first).op_id,status:"applied",revision:7,conflict:nil)])
+        try store.acknowledge(ack,sent:deletion); try store.acknowledge(ack,sent:deletion)
+        let reopened = try LocalStore(path:path)
+        XCTAssertNil(reopened.records.first { $0.id == id }?.value)
+        XCTAssertEqual(reopened.pendingCount,0)
+        XCTAssertEqual(try reopened.cursor,seed.cursor)
+    }
+
+    /// The shared native one-day value spans 23 hours at Auckland's DST switch;
+    /// UI end is exclusive, while re-encoding preserves inclusive native dates.
+    func testSharedAllDayCalendarProjection() throws {
+        let cases = try XCTUnwrap(conformance()["graphs"] as? [[String:Any]])
+        let item = try XCTUnwrap(cases.first { $0["name"] as? String == "all_day_inclusive_dst" })
+        let data = try JSONSerialization.data(withJSONObject:try XCTUnwrap(item["value"]))
+        let graph = try JSONDecoder().decode(Graph.self,from:data)
+        try graph.validate()
+        XCTAssertEqual(try Dates.parse(graph.text("end_at")).timeIntervalSince(Dates.parse(graph.text("start_at"))),23 * 3600)
+        let encoded = try XCTUnwrap(JSONSerialization.jsonObject(with:JSONEncoder().encode(graph)) as? NSDictionary)
+        let original = try XCTUnwrap(item["value"] as? NSDictionary)
+        XCTAssertEqual(encoded,original)
+    }
     private func location() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("test.sqlite3") }
     private func snapshot(_ records: [RecordVersion] = [], cursor: Int = 0) -> Snapshot {
         Snapshot(version:2,server_id:"desktop_fixture",cursor:cursor,records:records,conflicts:[])

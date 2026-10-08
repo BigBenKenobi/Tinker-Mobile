@@ -38,6 +38,16 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+      # Only public synthetic protocol artifacts cross this compatibility gate.
+      - name: Check out pinned public companion contract
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: BigBenKenobi/Tinker-Mobile
+          ref: 182e267e08eaf8d8266696e1920afe427e27ff44
+          path: .canonical-companion
+          persist-credentials: false
+      - name: Verify canonical contract and fixture digests
+        run: python3 scripts/check_companion_contract.py --canonical-root .canonical-companion --canonical-sha 182e267e08eaf8d8266696e1920afe427e27ff44
       - name: Choose regression or full visual suite
         env:
           CAPTURE_REQUESTED: ${{ inputs.full_capture }}
@@ -135,6 +145,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+      - name: Check out pinned public companion contract
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: BigBenKenobi/Tinker-Mobile
+          ref: 182e267e08eaf8d8266696e1920afe427e27ff44
+          path: .canonical-companion
+          persist-credentials: false
+      - name: Verify canonical contract and fixture digests
+        run: python3 scripts/check_companion_contract.py --canonical-root .canonical-companion --canonical-sha 182e267e08eaf8d8266696e1920afe427e27ff44
       - name: Confirm Xcode 26 toolchain
         run: |
           xcodebuild -version > "$RUNNER_TEMP/xcode-version.txt"

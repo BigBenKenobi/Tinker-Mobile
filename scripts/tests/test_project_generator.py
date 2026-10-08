@@ -44,6 +44,7 @@ class ProjectGeneratorTests(unittest.TestCase):
         self.assertIn('path = "TestNested/Deep/New.swift"', project)
         self.assertIn('path = "TinkerCompanion/Resources/Brand.xcassets"', project)
         self.assertIn("snapshot-v2.json", project)
+        self.assertIn("conformance-v2.json", project)
         self.assertNotIn("snapshot-v1.json", project)
         self.assertIn("com.apple.product-type.bundle.ui-testing", project)
         self.assertIn("TEST_TARGET_NAME = TinkerCompanion", project)
