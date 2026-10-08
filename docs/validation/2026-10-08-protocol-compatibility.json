@@ -17,7 +17,7 @@
   },
   "mobile": {
     "repository": "BigBenKenobi/Tinker-Mobile",
-    "review_code_sha": "886c78c370097a69e857a0672f9915a17a4d5e7e",
+    "review_code_sha": "ed06cf37c5152556380078f5e460a0427b3f3350",
     "parent_candidate_sha": "92126742d30c036123d9fe2362beafc3e4629849",
     "schema_version": 2,
     "python_tests": 9,
@@ -29,7 +29,8 @@
     "installed_build_number": "59",
     "installed_built_source_sha": "db007a3390c8a2ff25e511f615d4e5ff0b8f713c",
     "historical_manifest": "docs/validation/current.json",
-    "physical_acceptance": "pending"
+    "physical_acceptance": "pending",
+    "test_note": "Persisted conflict assertions compare content independently of the draft's native projection cache."
   },
   "protocol_version": 2,
   "canonical_repository": "BigBenKenobi/Tinker-Mobile",
