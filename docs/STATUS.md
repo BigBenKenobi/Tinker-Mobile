@@ -94,3 +94,7 @@ separate from the installed physical candidate; all three new XCTest methods pas
 Historical build 59/source db007a3 remains the installed candidate; this review
 does not identify a newly built or physically accepted phone app. Desktop hosted
 checks remain subject to the account billing/spending gate. Keep drafts unmerged.
+
+## Step 13 handoff — 9 October 2026
+
+Approved preparation is complete. [Physical acceptance](PHYSICAL-ACCEPTANCE.md) and [integration/release preparation](INTEGRATION_RELEASE.md) provide a fillable manifest, exact source/build distinction, evidence expiry and dependency order. Latest reviewed a92b9b0 head passes native run 37766716383/build 64 with 48 unit + two UI smoke tests per phone; no physical upgrade or full visual acceptance is inferred. Last recorded installed build 59 must be reverified before testing. All physical rows and owner license/distribution/support/approval decisions remain pending. Keep mobile #4 open and drafts unmerged. Curated result excerpts are retained; binary/capture review remains pending.
