@@ -1,0 +1,60 @@
+{
+  "format_version": 1,
+  "status": "local_gates_pass_new_native_and_hosted_verification_pending",
+  "date": "2026-10-08",
+  "timezone": "Pacific/Auckland",
+  "desktop": {
+    "repository": "BigBenKenobi/Tinker",
+    "verified_code_sha": "3b7679e0730c74e3ee9ddec23ec86f7d7bc99f6a",
+    "parent_sha": "279aa075fc46cd78483cf6006210cb72aaefe014",
+    "schema_version": 5,
+    "local_environment": "Linux / Python 3.12.14 / Qt 6.11.2 / TZ=UTC / offscreen",
+    "pytest_items": 250,
+    "successful_subtests": 7,
+    "junit_aggregate": 257,
+    "skips": 0,
+    "hosted_status": "pending account billing/spending gate"
+  },
+  "mobile": {
+    "repository": "BigBenKenobi/Tinker-Mobile",
+    "review_code_sha": "886c78c370097a69e857a0672f9915a17a4d5e7e",
+    "parent_candidate_sha": "92126742d30c036123d9fe2362beafc3e4629849",
+    "schema_version": 2,
+    "python_tests": 9,
+    "swift_grammar_files": 37,
+    "swift_grammar_errors": 0,
+    "new_native_xctest_cases": 3,
+    "native_verification": "pending; syntax is not compilation or behavior",
+    "new_build_number": null,
+    "installed_build_number": "59",
+    "installed_built_source_sha": "db007a3390c8a2ff25e511f615d4e5ff0b8f713c",
+    "historical_manifest": "docs/validation/current.json",
+    "physical_acceptance": "pending"
+  },
+  "protocol_version": 2,
+  "canonical_repository": "BigBenKenobi/Tinker-Mobile",
+  "canonical_sha": "182e267e08eaf8d8266696e1920afe427e27ff44",
+  "digests": {
+    "SYNC-v1.md": "3847bb6f0c400f850f373d8b19837f37525eb807f3bd3c265e9cd341255be43c",
+    "SYNC-v2.md": "8671ec368368c72943be9ec93325bf14cac52021e5e604ec04ad62ab68c79202",
+    "snapshot-v2.json": "b23a56b2a59a820a2cfb3cfa56a251bb38bc3296d74616ff99ed26e0573228c5",
+    "conformance-v2.json": "4e67f6481e9866a8bee107c217f068e9a4b094b5e61783bf833c9db908492845"
+  },
+  "behavior": {
+    "shared_graph_cases": 18,
+    "malformed_graph_cases": 12,
+    "desktop_scenarios": "engine upload replay/hash reuse rejection, conflict/resolution, linked cascading deletion, inclusive all-day roundtrip",
+    "mobile_scenarios": "native corpus decoding, durable ACK replay/conflict/resolution/deletion, DST exclusive UI/inclusive wire projection",
+    "digest_negative_probes": [
+      "contract bytes",
+      "fixture bytes",
+      "peer pin",
+      "canonical bytes",
+      "checkout pin"
+    ],
+    "local_pair_digest_gate": "pass; immutable published canonical artifact bytes verified"
+  },
+  "merge_approved": false,
+  "step13_approved": false,
+  "identity_note": "Code SHAs precede evidence-only commits. Draft PR heads identify the final review revisions. Historical build 59 evidence is retained unchanged and does not establish verification of the new mobile code."
+}
