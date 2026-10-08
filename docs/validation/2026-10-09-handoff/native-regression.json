@@ -1,0 +1,97 @@
+{
+  "format_version": 1,
+  "checked_local_date": "2026-10-09",
+  "run_id": 37766716383,
+  "run_url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37766716383",
+  "source_sha": "a92b9b0cb40e6d6b8a4a40fe47fc23a6aa0378c0",
+  "simulator_build": 64,
+  "conclusion": "success",
+  "xcode": "16.4",
+  "ios_simulator": "18.5",
+  "per_phone": {
+    "unit_tests": 48,
+    "ui_smoke_tests": 2,
+    "failures": 0
+  },
+  "phones": [
+    "iPhone SE (3rd generation)",
+    "iPhone 16 Pro Max"
+  ],
+  "job_ids": [
+    113276059136,
+    113276059083
+  ],
+  "scope": "Regression suite; screenshot export and unsigned device job skipped; no full visual or physical acceptance",
+  "curated_log_excerpt": "native-regression-excerpts.txt",
+  "retention": {
+    "curated_excerpts": "committed with this handoff",
+    "binary_results": "inventory only; not downloaded or reviewed here",
+    "desktop_artifacts_days": 30,
+    "mobile_compact_days": 90,
+    "mobile_full_days": 14
+  },
+  "artifacts": [
+    {
+      "id": 11545790533,
+      "name": "xcode-results-large",
+      "digest": "sha256:d6422f41e851009ae05b3c52f069563be81d16d36591466603598a08a481b062",
+      "bytes": 3028416,
+      "created_at": "2026-10-08T11:03:27Z",
+      "expires_at": "2026-10-22T11:03:25Z",
+      "expired": false,
+      "run_id": 37766716383,
+      "source_sha": "a92b9b0cb40e6d6b8a4a40fe47fc23a6aa0378c0",
+      "downloaded": false,
+      "content_reviewed": false
+    },
+    {
+      "id": 11545315932,
+      "name": "validation-large",
+      "digest": "sha256:225d6e120fcb3f4f50478d91fe67c326fbe2cf37cb26eb66887231565863e4a4",
+      "bytes": 1156,
+      "created_at": "2026-10-08T11:03:25Z",
+      "expires_at": "2027-01-06T10:55:53Z",
+      "expired": false,
+      "run_id": 37766716383,
+      "source_sha": "a92b9b0cb40e6d6b8a4a40fe47fc23a6aa0378c0",
+      "downloaded": false,
+      "content_reviewed": false
+    },
+    {
+      "id": 11544886590,
+      "name": "xcode-results-small",
+      "digest": "sha256:30865f04a198cd7a4a007f724c06f2865412cff9c1eeaa3e245c5e9a7a6d30c2",
+      "bytes": 2934541,
+      "created_at": "2026-10-08T11:00:18Z",
+      "expires_at": "2026-10-22T11:00:17Z",
+      "expired": false,
+      "run_id": 37766716383,
+      "source_sha": "a92b9b0cb40e6d6b8a4a40fe47fc23a6aa0378c0",
+      "downloaded": false,
+      "content_reviewed": false
+    },
+    {
+      "id": 11544604093,
+      "name": "validation-small",
+      "digest": "sha256:2e49b3768a4bc72db5fa0c3f5fdab1379b39fef987a70d2a04d9446996f51487",
+      "bytes": 1159,
+      "created_at": "2026-10-08T11:00:17Z",
+      "expires_at": "2027-01-06T10:55:53Z",
+      "expired": false,
+      "run_id": 37766716383,
+      "source_sha": "a92b9b0cb40e6d6b8a4a40fe47fc23a6aa0378c0",
+      "downloaded": false,
+      "content_reviewed": false
+    }
+  ],
+  "physical_payload_artifact": {
+    "id": 11495155584,
+    "name": "TinkerCompanion-unsigned-device-ipa",
+    "size_in_bytes": 955967,
+    "digest": "sha256:19cd744fa11294bb6f37b696da4fe3e2fa901a1b133068dbbf3d76261a39a375",
+    "created_at": "2026-10-07T15:53:26Z",
+    "expires_at": "2026-10-21T15:53:24Z",
+    "run_id": 37647505368,
+    "url": "https://github.com/BigBenKenobi/Tinker-Mobile/actions/runs/37647505368/artifacts/11495155584"
+  }
+}
